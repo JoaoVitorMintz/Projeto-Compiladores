@@ -1,22 +1,39 @@
 #ifndef LEXANALISER_H
 #define LEXANALISER_H
 
+// Definição de TOKENS/ATOMOS:
 typedef enum {
     ERRO,
     NUM,
     IDENT,
-    EOS
+    CONSTCHAR, // Específico do portugol
+    EOS,
+    MAIS,
+    MENOS,
+    MULT,
+    DIV,
+    ABRE_PAR,
+    FECHA_PAR,
+    ABRE_CHAVE,
+    FECHA_CHAVE,
+    SE,
+    SENAO,
+    ENQUANTO,
+    PARA,
+    FUNCAO
 } TAtomo;
 
 typedef struct {
     TAtomo atomo;
     int linha;
     union {
-        float numero;
-        char ID[16];
+        int numero; // atributo do átomo constint (constante inteira)
+        char id[16]; // atributo identificador
+        char ch; // atributo do átomo constchar (constante caractere)
     } atributo;
 } TInfoAtomo;
 
-TInfoAtomo obter_atomo();
+TInfoAtomo obter_atomo(); // Implementado no analisador léxico
+void iniciar_lexico(FILE *arquivo);
 
 #endif
