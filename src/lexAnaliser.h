@@ -9,7 +9,6 @@
 // Definição de TOKENS/ATOMOS:
 typedef enum {
     ERRO,
-    NUM,
     IDENT,
     CONSTCHAR, // Específico do portugol
     CONSTINT, // Específico do portugol
@@ -18,25 +17,41 @@ typedef enum {
     MAIS, // +
     MENOS, // -
     MULT, // *
-    DIV, // /
     MAIOR, // >
     MENOR, // <
     IGUAL, // =
     ATRIB, // :=
+    MAIOR_IGUAL, // >=
+    MENOR_IGUAL, // <=
 
     ABRE_PAR, // (
     FECHA_PAR, // )
     ABRE_CHAVE, // {
     FECHA_CHAVE, // }
-    ABRE_COM, // {-
-    FECHA_COM, // -}
+    COMENTARIO,
 
+    ALGORITMO,
+    CARACTERE,
+    DIV,
+    E,
+    ENQUANTO,
+    ENTAO,
+    ESCREVA,
+    FACA,
+    FALSO,
+    FIM,
+    FUNCAO,
     INICIO,
+    INTEIRO,
+    LEIA,
+    LOGICO,
+    MOD,
+    OU,
+    PROCEDIMENTO,
     SE,
     SENAO,
-    ENQUANTO,
-    PARA,
-    FUNCAO
+    VAR,
+    VERDADEIRO
 } TAtomo;
 
 typedef struct {

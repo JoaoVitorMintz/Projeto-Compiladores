@@ -17,7 +17,7 @@ FILE *arquivo;
 // Versão constint -> digito+((E(+|ε)digito+)|ε):
 void reconhece_numero(TInfoAtomo *info) {
     char *ini_lexema = buffer;
-    info->atomo = buffer;
+    info->atomo = ERRO;
 
     if (isdigit(*buffer)) {
         buffer++;
@@ -30,11 +30,12 @@ void reconhece_numero(TInfoAtomo *info) {
             buffer++;
             goto q1;
         }
-        if (*buffer == 'E') {
+
+        if (toupper(*buffer) == 'E') {
             buffer++;
             goto q2;
         }
-        return;
+        goto q4;
     
     q2:
         if (*buffer == '+') {
@@ -48,91 +49,172 @@ void reconhece_numero(TInfoAtomo *info) {
         return;
     
     q3:
-        if (idigit(*buffer)) {
+        if (isdigit(*buffer)) {
             buffer++;
             goto q3;
         }
 
+    q4:
         // Recorta lexema
         strncpy(lexema, ini_lexema, buffer-ini_lexema);
         lexema[buffer-ini_lexema] = '\0';
         info->atomo = CONSTINT;
-        info->atributo.numero = atoi(lexema); // Transforma texto em inteiro
 
+        // Se for por exemplo: 12E2 ou 12E+2, precisa calcular para inserir em atributo.numero
+        char *pos_E = strchr(lexema, 'E'); // Localiza primeira ocorrencia de E
+        if (pos_E != NULL) {
+            *pos_E = '\0'; // Corta string em Base e Expoente
+
+            int base = atoi(lexema); // Parte antes do E
+            char *exp_str = pos_E + 1; // Parte depois do E
+            if (*exp_str == '+') exp_str++;
+            int expoente = atoi(exp_str);
+
+            int potencia = 1;
+            for (int i = 0; i < expoente; i++) {
+                potencia *= 10;
+            }
+            info->atributo.numero = base * potencia;
+        } else { // Senão, só atribui inteiro para numero
+            info->atributo.numero = atoi(lexema); // Transforma String em número 
+        }
+        
         return;
 }
 
-// Versão numero -> digito+.digito+:
-// void reconhece_numero(TInfoAtomo *info) {
-//     char *ini_lexema = buffer;
-//     info->atomo = ERRO;
-
-//     if(isdigit(*buffer)) {
-//         buffer++;
-//         goto q1;
-//     }
-//     return;
-    
-//     q1:
-//         if (isdigit(*buffer)) {
-//             buffer++;
-//             goto q1;
-//         }
-//         if (*buffer == '.') {
-//             buffer++;
-//             goto q2;
-//         }
-//         return;
-    
-//     q2:
-//         if (isdigit(*buffer)) {
-//             buffer++;
-//             goto q3;
-//         }
-//         return;
-    
-//     q3:
-//         if (isdigit(*buffer)) {
-//             buffer++;
-//             goto q3;
-//         }
-//         if(isalpha(*buffer)) {
-//             return;
-//         }
-    
-//     // Recorta lexema
-//     strncpy(lexema, ini_lexema, buffer-ini_lexema);
-//     lexema[buffer-ini_lexema] = '\0';
-//     info->atomo = NUM;
-//     info->atributo.numero = atof(lexema);
-
-//     return;
-// }
-
+// Versão indetifier -> letra(letra|_|digito)*
 void reconhece_id(TInfoAtomo *info) {
     char *ini_lexema = buffer;
     info->atomo = ERRO;
 
-    if(islower(*buffer)) {
+    if (isalpha(*buffer)) {
         buffer++;
         goto q1;
     }
     return;
-    
+
     q1:
-        if (islower(*buffer) || isdigit(*buffer)) {
+        if(*buffer == '_') {
+            buffer++;
+            goto q1;
+        } else if (isalpha(*buffer)) {
+            buffer++;
+            goto q1;
+        } else if (isdigit(*buffer)) {
             buffer++;
             goto q1;
         }
-        if(isupper(*buffer)) return;
-        
     
-    // Recorta lexema
-    strncpy(lexema, ini_lexema, buffer-ini_lexema);
-    info->atributo.id[buffer-ini_lexema] = '\0';
-    info->atomo = IDENT;
+        int tamanho = buffer - ini_lexema;
 
+        // Verifica se é menor que 15
+        if (tamanho > 15) {
+            info->atomo = ERRO;
+            return;
+        }
+
+        // Recorta lexema
+        strncpy(info->atributo.id, ini_lexema, buffer-ini_lexema);
+        info->atributo.id[buffer-ini_lexema] = '\0';
+        info->atomo = IDENT;
+
+        // Não é case sensitive, então, deixar tudo minusculo
+        for (int i = 0; i < tamanho; i++) {
+            info->atributo.id[i] = tolower(info->atributo.id[i]);
+        }
+
+        reconhece_reservada(info);
+
+        return;
+}
+
+// Aproveitando o reconhece_id para verificar se o identificador coletado é
+// palavra chave ou não
+void reconhece_reservada(TInfoAtomo *info) {
+    if (strcmp(info->atributo.id, "algoritmo") == 0) {
+        info->atomo = ALGORITMO;
+    } else if (strcmp(info->atributo.id, "caractere") == 0) {
+        info->atomo = CARACTERE;
+    } else if (strcmp(info->atributo.id, "div") == 0) {
+        info->atomo = DIV;
+    } else if (strcmp(info->atributo.id, "e") == 0) {
+        info->atomo = E;
+    } else if (strcmp(info->atributo.id, "enquanto") == 0) {
+        info->atomo = ENQUANTO;
+    } else if (strcmp(info->atributo.id, "entao") == 0) {
+        info->atomo = ENTAO;
+    } else if (strcmp(info->atributo.id, "escreva") == 0) {
+        info->atomo = ESCREVA;
+    } else if (strcmp(info->atributo.id, "faca") == 0) {
+        info->atomo = FACA;
+    } else if (strcmp(info->atributo.id, "falso") == 0) {
+        info->atomo = FALSO;
+    } else if (strcmp(info->atributo.id, "fim") == 0) {
+        info->atomo = FIM;
+    } else if (strcmp(info->atributo.id, "função") == 0) {
+        info->atomo = FUNCAO;
+    } else if (strcmp(info->atributo.id, "inicio") == 0) {
+        info->atomo = INICIO;
+    } else if (strcmp(info->atributo.id, "inteiro") == 0) {
+        info->atomo = INTEIRO;
+    } else if (strcmp(info->atributo.id, "leia") == 0) {
+        info->atomo = LEIA;
+    } else if (strcmp(info->atributo.id, "logico") == 0) {
+        info->atomo = LOGICO;
+    } else if (strcmp(info->atributo.id, "mod") == 0) {
+        info->atomo = MOD;
+    } else if (strcmp(info->atributo.id, "ou") == 0) {
+        info->atomo = OU;
+    } else if (strcmp(info->atributo.id, "procedimento") == 0) {
+        info->atomo = PROCEDIMENTO;
+    } else if (strcmp(info->atributo.id, "se") == 0) {
+        info->atomo = SE;
+    } else if (strcmp(info->atributo.id, "senao") == 0) {
+        info->atomo = SENAO;
+    } else if (strcmp(info->atributo.id, "var") == 0) {
+        info->atomo = VAR;
+    } else if (strcmp(info->atributo.id, "verdadeiro") == 0) {
+        info->atomo = VERDADEIRO;
+    } else {
+        info->atomo = IDENT;
+    }
+}
+
+// Reconhece comentário para ignorá-lo
+void reconhece_comentario(TInfoAtomo *info) {
+    while (*buffer != 0) {
+        if (*buffer == '\n') linha++;
+        if (*buffer == '-' && *(buffer + 1) == '}') {
+            buffer += 2;
+            info->atomo = COMENTARIO;
+            return;
+        }
+        buffer++;
+    }
+    info->atomo = ERRO; // Caso não ache o -}
+}
+
+// Reconhece constchar
+void reconhece_constchar(TInfoAtomo *info) {
+    info->atomo = ERRO;
+
+    if (*buffer == '\'') {
+        buffer++;
+        goto q1;
+    }
     return;
+
+    q1:
+        if (*buffer != '\0' && *buffer != '\'') { // Verifica se não é '' ou '
+            char charactere_lido = *buffer;
+            buffer++;
+            if (*buffer == '\'') {
+                buffer++;
+                info->atomo = CONSTCHAR;
+                info->atributo.ch = charactere_lido;
+            }
+        }
+        return;
 }
 
 // Função para obter o atomo e, dependendo do seu tipo (numero ou palavra), ele OU
@@ -157,7 +239,7 @@ TInfoAtomo obter_atomo(void) {
         info.atomo = EOS;
     } else if (isdigit(*buffer)) { // Reconhece numero
         reconhece_numero(&info);
-    } else if (islower(*buffer)) { // Reconhece id
+    } else if (isalpha(*buffer)) { // Reconhece id ou palavra chave
         reconhece_id(&info);
     } else if (*buffer == '*') {
         info.atomo = MULT;
@@ -168,9 +250,12 @@ TInfoAtomo obter_atomo(void) {
     } else if (*buffer == '-') {
         info.atomo = MENOS;
         buffer++;
-    } else if (*buffer == '/') {
-        info.atomo = DIV;
-        buffer++;
+    } else if (*buffer == '>' && *(buffer + 1) == '=') {
+        info.atomo = MAIOR_IGUAL;
+        buffer += 2;
+    } else if (*buffer == '<' && *(buffer + 1) == '=') {
+        info.atomo = MENOR_IGUAL;
+        buffer += 2;
     } else if (*buffer == '>') {
         info.atomo = MAIOR;
         buffer++;
@@ -182,25 +267,26 @@ TInfoAtomo obter_atomo(void) {
         buffer++;
     } else if (*buffer == ':' && *(buffer + 1) == '=') {
         info.atomo = ATRIB;
-        buffer++;
+        buffer += 2;
     } else if (*buffer == '(') {
         info.atomo = ABRE_PAR;
         buffer++;
     } else if (*buffer == ')') {
         info.atomo = FECHA_PAR;
         buffer++;
+    } else if (*buffer == '{' && *(buffer + 1) == '-') {
+        buffer += 2;
+        reconhece_comentario(&info);
     } else if (*buffer == '{') {
         info.atomo = ABRE_CHAVE;
         buffer++;
     } else if (*buffer == '}') {
         info.atomo = FECHA_CHAVE;
         buffer++;
-    } else if (*buffer == '{' && *(buffer + 1) == '-') {
-        info.atomo = ABRE_COM;
-        buffer++;
-    } else if (*buffer == '-' && *(buffer + 1) == '}') {
-        info.atomo = FECHA_COM;
-        buffer++;
+    } else if (*buffer == '\'') {
+        reconhece_constchar(&info);
+    } else {
+        return;
     }
 
     return info;
