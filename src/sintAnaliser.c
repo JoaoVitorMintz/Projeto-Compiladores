@@ -33,10 +33,12 @@ gcc ASDR3.c -o ASDR3
 typedef enum {
     EOS, ERRO, COMENTARIO,
     ALGORITMO, VAR, INICIO, FIM, FUNCAO, PROCEDIMENTO,
-    CARACTERE, INTEIRO, LOGICO, LEIA, ESCREVA, SE, ENQUANTO,
+    CARACTERE, INTEIRO, LOGICO, LEIA, ESCREVA, SE, ENTAO, SENAO, ENQUANTO, FACA,
+    VERDADEIRO, FALSO, NAIO, OU, E, MOD, DIV,
     IDENT, CONSTINT, CONSTCHAR,
     PONTO_VIRGULA, PONTO, VIRGULA, DOIS_PONTOS,
-    MAIS, MENOS, MULT, DIV_OP, ATRIB, ABRE_PAR, FECHA_PAR
+    MAIS, MENOS, MULT, DIV_OP, ATRIB, ABRE_PAR, FECHA_PAR,
+    IGUAL, DIFERENTE, MENOR, MENOR_IGUAL, MAIOR, MAIOR_IGUAL
 } TAtomo;
 
 // Estrutura de comunicação Léxico-Sintático
@@ -74,8 +76,23 @@ const char* nome_atomo(TAtomo atomo) {
         case LEIA: return "leia";
         case ESCREVA: return "escreva";
         case SE: return "se";
+        case ENTAO: return "entao";
+        case SENAO: return "senao";
         case ENQUANTO: return "enquanto";
+        case FACA: return "faca";
+        case CARACTERE: return "caractere";
+        case INTEIRO: return "inteiro";
+        case LOGICO: return "logico";
+        case VERDADEIRO: return "verdadeiro";
+        case FALSO: return "falso";
+        case NAIO: return "nao";
+        case OU: return "ou";
+        case E: return "e";
+        case MOD: return "mod";
+        case DIV: return "div";
         case IDENT: return "identificador";
+        case CONSTINT: return "constint";
+        case CONSTCHAR: return "constchar";
         case PONTO_VIRGULA: return ";";
         case PONTO: return ".";
         case VIRGULA: return ",";
@@ -83,6 +100,16 @@ const char* nome_atomo(TAtomo atomo) {
         case ATRIB: return ":=";
         case ABRE_PAR: return "(";
         case FECHA_PAR: return ")";
+        case IGUAL: return "=";
+        case DIFERENTE: return "<>";
+        case MENOR: return "<";
+        case MENOR_IGUAL: return "<=";
+        case MAIOR: return ">";
+        case MAIOR_IGUAL: return ">=";
+        case MAIS: return "+";
+        case MENOS: return "-";
+        case MULT: return "*";
+        case DIV_OP: return "/";
         case EOS: return "fim de arquivo";
         default: return "simbolo";
     }
@@ -99,27 +126,31 @@ void imprime_atomo(TInfoAtomo info) {
 
 // PROTÓTIPOS DE TODAS AS FUNÇÕES DA GRAMÁTICA
 void consome(TAtomo atomo_esperado);
-void programa();
-void bloco();
-void declaracao_variaveis();
-void lista_variaveis();
-void declaracao_rotinas();
-void declaracao_funcao();
-void declaracao_procedimento();
-void tipo();
-void parametros_formais();
-void parametro_formal();
-void comando_composto();
-void comando();
-void comando_atribuicao();
-void comando_entrada();
-void comando_saida();
-void comando_condicional();
-void comando_repeticao();
-void lista_expressao();
-void expressao();
-void termo();
-void fator();
+void programa(void);
+void bloco(void);
+void declaracao_variaveis(void);
+void lista_variaveis(void);
+void declaracao_rotinas(void);
+void declaracao_funcao(void);
+void declaracao_procedimento(void);
+void tipo(void);
+void parametros_formais(void);
+void parametro_formal(void);
+void comando_composto(void);
+void comando(void);
+void comando_atribuicao(void);
+void comando_entrada(void);
+void comando_saida(void);
+void comando_condicional(void);
+void comando_repeticao(void);
+void lista_expressao(void);
+void expressao(void);
+void operador_relacional(void);
+void expressao_simples(void);
+void operador_adicao(void);
+void termo(void);
+void operador_multiplicacao(void);
+void fator(void);
 
 // Função consome adaptada
 void consome(TAtomo atomo_esperado) {
@@ -135,7 +166,7 @@ void consome(TAtomo atomo_esperado) {
     }
 }
 
-int main() {
+int main(void) {
     lookahead = obter_atomo();
     programa();
 
@@ -145,10 +176,10 @@ int main() {
     return 0;
 }
 
-// IMPLEMENTAÇÃO DAS REGRAS IMPLEMENTADAS ATÉ AGORA
+// IMPLEMENTAÇÃO DAS REGRAS
 
 // 1. <programa> ::= algoritmo identificador ';' <bloco> '.'
-void programa() {
+void programa(void) {
     consome(ALGORITMO);
     consome(IDENT);
     consome(PONTO_VIRGULA);
@@ -157,14 +188,14 @@ void programa() {
 }
 
 // 2. <bloco> ::= <declaração_variáveis> <declaração_de_rotinas> <comando_composto>
-void bloco() {
+void bloco(void) {
     declaracao_variaveis();
     declaracao_rotinas();
     comando_composto();
 }
 
 // 3. <declaração_variáveis> ::= [ var <lista_variaveis> ';' { <lista_variaveis> ';' } ]
-void declaracao_variaveis() {
+void declaracao_variaveis(void) {
     if (lookahead.atomo == VAR) {
         consome(VAR);
         lista_variaveis();
@@ -177,7 +208,7 @@ void declaracao_variaveis() {
 }
 
 // 4. <lista_variaveis> ::= identificador { ',' identificador } ':' <tipo>
-void lista_variaveis() {
+void lista_variaveis(void) {
     consome(IDENT);
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
@@ -188,7 +219,7 @@ void lista_variaveis() {
 }
 
 // 5. <declaracao_de_rotinas> ::= { <declaração_de_função> | <declaração_de_procedimento> }
-void declaracao_rotinas() {
+void declaracao_rotinas(void) {
     while (lookahead.atomo == FUNCAO || lookahead.atomo == PROCEDIMENTO) {
         if (lookahead.atomo == FUNCAO) {
             declaracao_funcao();
@@ -199,7 +230,7 @@ void declaracao_rotinas() {
 }
 
 // 6. <declaração_de_função>
-void declaracao_funcao() {
+void declaracao_funcao(void) {
     consome(FUNCAO);
     tipo();
     consome(IDENT);
@@ -209,7 +240,7 @@ void declaracao_funcao() {
 }
 
 // 7. <declaracao_de_procedimento>
-void declaracao_procedimento() {
+void declaracao_procedimento(void) {
     consome(PROCEDIMENTO);
     consome(IDENT);
     parametros_formais();
@@ -218,7 +249,7 @@ void declaracao_procedimento() {
 }
 
 // 8. <tipo> ::= caractere | inteiro | logico
-void tipo() {
+void tipo(void) {
     if (lookahead.atomo == CARACTERE) {
         consome(CARACTERE);
     } else if (lookahead.atomo == INTEIRO) {
@@ -233,7 +264,7 @@ void tipo() {
 }
 
 // 9. <parâmetros_formais>
-void parametros_formais() {
+void parametros_formais(void) {
     consome(ABRE_PAR);
     if (lookahead.atomo == VAR || lookahead.atomo == IDENT) {
         parametro_formal();
@@ -246,7 +277,7 @@ void parametros_formais() {
 }
 
 // 10. <parâmetro_formal> ::= [var] <lista_variaveis>
-void parametro_formal() {
+void parametro_formal(void) {
     if (lookahead.atomo == VAR) {
         consome(VAR);
     }
@@ -254,7 +285,7 @@ void parametro_formal() {
 }
 
 // 11. <comando_composto> ::= inicio <comando> { ';' <comando> } fim
-void comando_composto() {
+void comando_composto(void) {
     consome(INICIO);
     comando();
     while (lookahead.atomo == PONTO_VIRGULA) {
@@ -265,7 +296,7 @@ void comando_composto() {
 }
 
 // 12. <comando>
-void comando() {
+void comando(void) {
     if (lookahead.atomo == LEIA) {
         comando_entrada();
     } else if (lookahead.atomo == ESCREVA) {
@@ -282,7 +313,7 @@ void comando() {
 }
 
 // 13. <comando_atribuição>
-void comando_atribuicao() {
+void comando_atribuicao(void) {
     consome(IDENT);
     if (lookahead.atomo == ATRIB) {
         consome(ATRIB);
@@ -294,12 +325,142 @@ void comando_atribuicao() {
     }
 }
 
-// Stubs temporários para as funções pendentes
-void comando_entrada() {}
-void comando_saida() {}
-void comando_condicional(void) {}
-void comando_repeticao(void) {}
-void lista_expressao(void) {}
-void expressao(void) {}
-void termo(void) {}
-void fator(void) {}
+// 14. <comando_entrada> ::= leia '(' identificador { ',' identificador } ')'
+void comando_entrada(void) {
+    consome(LEIA);
+    consome(ABRE_PAR);
+    consome(IDENT);
+    while (lookahead.atomo == VIRGULA) {
+        consome(VIRGULA);
+        consome(IDENT);
+    }
+    consome(FECHA_PAR);
+}
+
+// 15. <comando_saida> ::= escreva '(' <lista_expressao> ')'
+void comando_saida(void) {
+    consome(ESCREVA);
+    consome(ABRE_PAR);
+    lista_expressao();
+    consome(FECHA_PAR);
+}
+
+// 16. <comando_condicional> ::= se <expressao> entao <comando> [ senao <comando> ]
+void comando_condicional(void) {
+    consome(SE);
+    expressao();
+    consome(ENTAO);
+    comando();
+    if (lookahead.atomo == SENAO) {
+        consome(SENAO);
+        comando();
+    }
+}
+
+// 17. <comando_repeticao> ::= enquanto <expressao> faca <comando>
+void comando_repeticao(void) {
+    consome(ENQUANTO);
+    expressao();
+    consome(FACA);
+    comando();
+}
+
+// 18. <lista_expressao> ::= <expressao> { ',' <expressao> }
+void lista_expressao(void) {
+    expressao();
+    while (lookahead.atomo == VIRGULA) {
+        consome(VIRGULA);
+        expressao();
+    }
+}
+
+// 19. <expressao> ::= <expressao_simples> [ <operador_relacional> <expressao_simples> ]
+void expressao(void) {
+    expressao_simples();
+    if (lookahead.atomo == IGUAL || lookahead.atomo == DIFERENTE ||
+        lookahead.atomo == MENOR || lookahead.atomo == MENOR_IGUAL ||
+        lookahead.atomo == MAIOR || lookahead.atomo == MAIOR_IGUAL) {
+        operador_relacional();
+        expressao_simples();
+    }
+}
+
+// 20. <operador_relacional> ::= '=' | '<>' | '<' | '<=' | '>' | '>='
+void operador_relacional(void) {
+    if (lookahead.atomo == DIFERENTE) consome(DIFERENTE);
+    else if (lookahead.atomo == MENOR) consome(MENOR);
+    else if (lookahead.atomo == MENOR_IGUAL) consome(MENOR_IGUAL);
+    else if (lookahead.atomo == MAIOR_IGUAL) consome(MAIOR_IGUAL);
+    else if (lookahead.atomo == MAIOR) consome(MAIOR);
+    else if (lookahead.atomo == IGUAL) consome(IGUAL);
+}
+
+// 21. <expressao_simples> ::= <termo> { <operador_adicao> <termo> }
+void expressao_simples(void) {
+    termo();
+    while (lookahead.atomo == MAIS || lookahead.atomo == MENOS ||
+           lookahead.atomo == MOD || lookahead.atomo == OU) {
+        operador_adicao();
+        termo();
+    }
+}
+
+// 22. <operador_adicao> ::= '+' | '-' | mod | ou
+void operador_adicao(void) {
+    if (lookahead.atomo == MAIS) consome(MAIS);
+    else if (lookahead.atomo == MENOS) consome(MENOS);
+    else if (lookahead.atomo == MOD) consome(MOD);
+    else if (lookahead.atomo == OU) consome(OU);
+}
+
+// 23. <termo> ::= <fator> { <operador_multiplicacao> <fator> }
+void termo(void) {
+    fator();
+    while (lookahead.atomo == MULT || lookahead.atomo == DIV_OP ||
+           lookahead.atomo == DIV || lookahead.atomo == E) {
+        operador_multiplicacao();
+        fator();
+    }
+}
+
+// 24. <operador_multiplicacao> ::= '*' | '/' | div | e
+void operador_multiplicacao(void) {
+    if (lookahead.atomo == MULT) consome(MULT);
+    else if (lookahead.atomo == DIV_OP) consome(DIV_OP);
+    else if (lookahead.atomo == DIV) consome(DIV);
+    else if (lookahead.atomo == E) consome(E);
+}
+
+// 25. <fator> ::= identificador [ '(' <lista_expressao> ')' ] | constint | constchar |
+//                 '(' <expressao> ')' | ( '+' | '-' | nao ) <fator> | verdadeiro | falso
+void fator(void) {
+    if (lookahead.atomo == IDENT) {
+        consome(IDENT);
+        if (lookahead.atomo == ABRE_PAR) {
+            consome(ABRE_PAR);
+            lista_expressao();
+            consome(FECHA_PAR);
+        }
+    } else if (lookahead.atomo == CONSTINT) {
+        consome(CONSTINT);
+    } else if (lookahead.atomo == CONSTCHAR) {
+        consome(CONSTCHAR);
+    } else if (lookahead.atomo == ABRE_PAR) {
+        consome(ABRE_PAR);
+        expressao();
+        consome(FECHA_PAR);
+    } else if (lookahead.atomo == MAIS || lookahead.atomo == MENOS || lookahead.atomo == NAIO) {
+        if (lookahead.atomo == MAIS) consome(MAIS);
+        else if (lookahead.atomo == MENOS) consome(MENOS);
+        else consome(NAIO);
+        fator();
+    } else if (lookahead.atomo == VERDADEIRO) {
+        consome(VERDADEIRO);
+    } else if (lookahead.atomo == FALSO) {
+        consome(FALSO);
+    } else {
+        printf("#%d: erro sintatico, esperado [fator] encontrado [%s]\n", 
+               lookahead.linha, nome_atomo(lookahead.atomo));
+        exit(1);
+    }
+}
