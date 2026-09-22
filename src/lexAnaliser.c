@@ -14,6 +14,13 @@ int linha;
 // Variáveis temporárias para teste
 FILE *arquivo;
 
+// Funções criadas:
+void reconhece_numero(TInfoAtomo *info);
+void reconhece_id(TInfoAtomo *info);
+void reconhece_reservada(TInfoAtomo *info);
+void reconhece_constchar(TInfoAtomo *info);
+void reconhece_comentari(TInfoAtomo *info);
+
 // Versão constint -> digito+((E(+|ε)digito+)|ε):
 void reconhece_numero(TInfoAtomo *info) {
     char *ini_lexema = buffer;
@@ -286,19 +293,14 @@ TInfoAtomo obter_atomo(void) {
     } else if (*buffer == '\'') {
         reconhece_constchar(&info);
     } else {
-        return;
+        return info;
     }
 
     return info;
 }
 
 // Função temporária para teste
-void iniciar_lexico(FILE *arquivo) {
-    linha = 1;
-
-    if (fgets(buffer, sizeof(buffer), arquivo) != NULL) {
-        ponteiro = buffer;
-    } else {
-        ponteiro = NULL;
-    }
+void iniciar_lexico(char *buffer_linha, int i) {
+    linha = i;
+    buffer = buffer_linha;
 }

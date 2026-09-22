@@ -67,6 +67,6 @@ typedef struct {
 TInfoAtomo obter_atomo(void); // Implementado no analisador léxico
 void reconhece_numero(TInfoAtomo *info_atomo);
 void reconhece_id(TInfoAtomo *info_atomo);
-void iniciar_lexico(FILE *arquivo);
+void iniciar_lexico(char *buffer_linha, int i);
 
 #endif

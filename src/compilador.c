@@ -18,15 +18,24 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    // TRECHO SERÁ REMOVIDO POSTERIORMENTE, APENAS TESTE DO LÉXICO:
-    iniciar_lexico(arquivo);
+    char buffer[1024];
+    int linha = 1;
 
-    TInfoAtomo info;
-    do {
-        info = obter_atomo();
+    while (fgets(buffer, sizeof(buffer), arquivo) != NULL) {
 
-        printf("Linha %d: token = %d\n", info.linha, info.atomo);
-    } while (info.atomo != EOS && info.atomo != ERRO);
+        iniciar_lexico(buffer, linha);
+
+        TInfoAtomo info;
+
+        do {
+            info = obter_atomo();
+
+            printf("Linha %d: token = %d\n", info.linha, info.atomo);
+
+        } while (info.atomo != EOS && info.atomo != ERRO);
+
+        linha++;
+    }
 
     fclose(arquivo);
 
