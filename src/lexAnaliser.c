@@ -11,6 +11,10 @@ char lexema[20];
 char *ponteiro;
 int linha;
 
+// Para comentários multi-linha, variável criada para salvar se o comentário foi
+// aberto, porém, ainda não foi fechado
+int comentario_aberto = 0;
+
 // Variáveis temporárias para teste
 FILE *arquivo;
 
@@ -190,15 +194,16 @@ void reconhece_reservada(TInfoAtomo *info) {
 // Reconhece comentário para ignorá-lo
 void reconhece_comentario(TInfoAtomo *info) {
     while (*buffer != 0) {
-        if (*buffer == '\n') linha++;
         if (*buffer == '-' && *(buffer + 1) == '}') {
             buffer += 2;
+            comentario_aberto = 0;
             info->atomo = COMENTARIO;
             return;
         }
         buffer++;
     }
-    info->atomo = ERRO; // Caso não ache o -}
+    // Chegou ao final da linha, mas comentário continua aberto
+    info->atomo = EOS; // Especifico para mudar de linha no obter_proximo_token()
 }
 
 // Reconhece constchar
@@ -225,8 +230,7 @@ void reconhece_constchar(TInfoAtomo *info) {
 }
 
 // Função para obter o atomo e, dependendo do seu tipo (numero ou palavra), ele OU
-// verifica a se o atomo da palavra reservado está certo ou insere novo atomo
-// à tabela que será compartilhada entre analisador léxico e sintático
+// verifica a se o atomo da palavra reservado está certo
 TInfoAtomo obter_atomo(void) {
     TInfoAtomo info;
 
@@ -240,6 +244,16 @@ TInfoAtomo obter_atomo(void) {
     }
 
     info.linha = linha;
+
+    // Caso um comentário tenha sido aberto e nunca fechado, ele vai abrir direto
+    // no reconhece_comentario() até encontrar o -}
+    if (comentario_aberto) {
+        reconhece_comentario(&info);
+
+        if (info.atomo == COMENTARIO) {
+            return info;
+        }
+    }
 
     // Obtenção de cada atomo:
     if (*buffer == 0) { // final de buffer
@@ -283,6 +297,7 @@ TInfoAtomo obter_atomo(void) {
         buffer++;
     } else if (*buffer == '{' && *(buffer + 1) == '-') {
         buffer += 2;
+        comentario_aberto = 1;
         reconhece_comentario(&info);
     } else if (*buffer == '{') {
         info.atomo = ABRE_CHAVE;
@@ -292,6 +307,18 @@ TInfoAtomo obter_atomo(void) {
         buffer++;
     } else if (*buffer == '\'') {
         reconhece_constchar(&info);
+    } else if (*buffer == ';') {
+        info.atomo = PONTO_VIRGULA;
+        buffer++;
+    } else if (*buffer == '.') {
+        info.atomo = PONTO;
+        buffer++;
+    } else if (*buffer == ':') {
+        info.atomo = DOIS_PONTOS;
+        buffer++;
+    } else if (*buffer == ',') {
+        info.atomo = VIRGULA;
+        buffer++;
     } else {
         return info;
     }

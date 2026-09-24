@@ -8,10 +8,10 @@ int flag_valida_fci_2026 = 1;
 
 // Compatibilidade de enumerações com o lexAnaliser.h
 #ifndef PONTO_VIRGULA
-#define PONTO_VIRGULA 50
-#define PONTO         51
-#define VIRGULA       52
-#define DOIS_PONTOS   53
+// #define PONTO_VIRGULA 50
+// #define PONTO         51
+// #define VIRGULA       52
+// #define DOIS_PONTOS   53
 #define DIV_OP        54
 #define DIFERENTE     55
 #define NAIO          56
@@ -55,12 +55,14 @@ void fator();
 
 // Obtém o próximo token tratando mudanças de linha e ignorando comentários
 TInfoAtomo obter_proximo_token() {
-    TInfoAtomo info = obter_atomo();
+    TInfoAtomo info;
 
     while (1) {
+        // Obtém o átomo da linha
+        info = obter_atomo();
+
         // Se for um comentário, ignora e busca o próximo
         if (info.atomo == COMENTARIO) {
-            info = obter_atomo();
             continue;
         }
 
@@ -69,14 +71,11 @@ TInfoAtomo obter_proximo_token() {
             if (arquivo_fonte != NULL && fgets(buffer_linha, sizeof(buffer_linha), arquivo_fonte) != NULL) {
                 linha++;
                 iniciar_lexico(buffer_linha, linha);
-                info = obter_atomo();
                 continue;
             }
         }
-
         break;
     }
-
     return info;
 }
 

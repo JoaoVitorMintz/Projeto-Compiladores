@@ -1,7 +1,6 @@
 {-
 programa le dois numeros inteiros e encontra o maior
 -}
-
 algoritmo ex1;
 var num_1, NUM_2:inteiro; maior:inteiro; tEste:caractere;
 inicio

@@ -29,6 +29,10 @@ typedef enum {
     ABRE_CHAVE, // {
     FECHA_CHAVE, // }
     COMENTARIO,
+    PONTO_VIRGULA, // ;
+    PONTO,
+    DOIS_PONTOS,
+    VIRGULA,
 
     ALGORITMO,
     CARACTERE,
