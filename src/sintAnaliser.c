@@ -1,72 +1,87 @@
-/*
-Gramatica na notacao BNF
-<expressao>::=<expressao>'+'<termo>|<expressão>'-'<termo>|<termo>
-<termo>::=<termo> '*'<fator>|<termo>'/'<fator>|<fator>
-<fator>::='a'|'b'|'c'|...|'1'|'2'|'3'|...|'('<expressão>')'
-
-Converter para notacao EBNF
-fatorar a esquerda
-<expressao>::=<expressao> ('+'<termo>|'-'<termo>) <termo>
-
-fatorar a direita
-<expressao>::= <expressao> ('+'|'-') <termo> !  <termo>
-
-eliminando a recursividade a esquerda
-<expressao>::= <termo> {('+'|'-') <termo>}
-
-<termo>::=<termo> ('*'|'/') <fator>|<fator>
-
-Gramatica notacao EBNF
-<expressao>::= <termo> {('+'|'-') <termo>}
-<termo>::=<fator> {('*'|'/') <fator>}
-<fator>::='a'|'b'|'c'|...|'1'|'2'|'3'|...|'('<expressão>')'
-
-gcc ASDR3.c -o ASDR3
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+#include "lexAnaliser.h"
 
-// Definição Completa dos Átomos conforme exigido no Portugol
-typedef enum {
-    EOS, ERRO, COMENTARIO,
-    ALGORITMO, VAR, INICIO, FIM, FUNCAO, PROCEDIMENTO,
-    CARACTERE, INTEIRO, LOGICO, LEIA, ESCREVA, SE, ENTAO, SENAO, ENQUANTO, FACA,
-    VERDADEIRO, FALSO, NAIO, OU, E, MOD, DIV,
-    IDENT, CONSTINT, CONSTCHAR,
-    PONTO_VIRGULA, PONTO, VIRGULA, DOIS_PONTOS,
-    MAIS, MENOS, MULT, DIV_OP, ATRIB, ABRE_PAR, FECHA_PAR,
-    IGUAL, DIFERENTE, MENOR, MENOR_IGUAL, MAIOR, MAIOR_IGUAL
-} TAtomo;
+// Diretiva exigida pela especificação
+int flag_valida_fci_2026 = 1;
 
-// Estrutura de comunicação Léxico-Sintático
-typedef struct {
-    TAtomo atomo;
-    int linha;
-    union {
-        int numero;
-        char id[16];
-        char ch;
-    } atributo;
-} TInfoAtomo;
+// Compatibilidade de enumerações com o lexAnaliser.h
+#ifndef PONTO_VIRGULA
+#define PONTO_VIRGULA 50
+#define PONTO         51
+#define VIRGULA       52
+#define DOIS_PONTOS   53
+#define DIV_OP        54
+#define DIFERENTE     55
+#define NAIO          56
+#endif
 
-// Variáveis globais do sintático
+// Variáveis de controle de arquivo e estado do Léxico
+static FILE *arquivo_fonte = NULL;
+static char buffer_linha[1024];
+extern int linha;
+
 TInfoAtomo lookahead;
-int linha = 1;
 
-// Léxico Temporário
-TInfoAtomo obter_atomo(void) {
-    TInfoAtomo info;
-    info.atomo = EOS;
-    info.linha = linha;
+// Protótipos das regras da gramática
+void consome(TAtomo atomo_esperado);
+const char* nome_atomo(TAtomo atomo);
+void programa();
+void bloco();
+void declaracao_variaveis();
+void lista_variaveis();
+void declaracao_rotinas();
+void declaracao_funcao();
+void declaracao_procedimento();
+void tipo();
+void parametros_formais();
+void parametro_formal();
+void comando_composto();
+void comando();
+void comando_atribuicao();
+void comando_entrada();
+void comando_saida();
+void comando_condicional();
+void comando_repeticao();
+void lista_expressao();
+void expressao();
+void operador_relacional();
+void expressao_simples();
+void operador_adicao();
+void termo();
+void operador_multiplicacao();
+void fator();
+
+// Obtém o próximo token tratando mudanças de linha e ignorando comentários
+TInfoAtomo obter_proximo_token() {
+    TInfoAtomo info = obter_atomo();
+
+    while (1) {
+        // Se for um comentário, ignora e busca o próximo
+        if (info.atomo == COMENTARIO) {
+            info = obter_atomo();
+            continue;
+        }
+
+        // Se a linha terminou (EOS), carrega a próxima linha do arquivo
+        if (info.atomo == EOS) {
+            if (arquivo_fonte != NULL && fgets(buffer_linha, sizeof(buffer_linha), arquivo_fonte) != NULL) {
+                linha++;
+                iniciar_lexico(buffer_linha, linha);
+                info = obter_atomo();
+                continue;
+            }
+        }
+
+        break;
+    }
+
     return info;
 }
 
-// Auxiliar para mensagens de erro sintático
 const char* nome_atomo(TAtomo atomo) {
-    switch(atomo) {
+    switch((int)atomo) {
         case ALGORITMO: return "algoritmo";
         case VAR: return "var";
         case INICIO: return "inicio";
@@ -85,7 +100,6 @@ const char* nome_atomo(TAtomo atomo) {
         case LOGICO: return "logico";
         case VERDADEIRO: return "verdadeiro";
         case FALSO: return "falso";
-        case NAIO: return "nao";
         case OU: return "ou";
         case E: return "e";
         case MOD: return "mod";
@@ -101,7 +115,6 @@ const char* nome_atomo(TAtomo atomo) {
         case ABRE_PAR: return "(";
         case FECHA_PAR: return ")";
         case IGUAL: return "=";
-        case DIFERENTE: return "<>";
         case MENOR: return "<";
         case MENOR_IGUAL: return "<=";
         case MAIOR: return ">";
@@ -109,77 +122,34 @@ const char* nome_atomo(TAtomo atomo) {
         case MAIS: return "+";
         case MENOS: return "-";
         case MULT: return "*";
-        case DIV_OP: return "/";
         case EOS: return "fim de arquivo";
         default: return "simbolo";
     }
 }
 
-void imprime_atomo(TInfoAtomo info) {
-    printf("#%d:", info.linha);
-    if (info.atomo == IDENT) {
-        printf(" identificador: %s\n", info.atributo.id);
-    } else {
-        printf(" %s\n", nome_atomo(info.atomo));
-    }
-}
-
-// PROTÓTIPOS DE TODAS AS FUNÇÕES DA GRAMÁTICA
-void consome(TAtomo atomo_esperado);
-void programa(void);
-void bloco(void);
-void declaracao_variaveis(void);
-void lista_variaveis(void);
-void declaracao_rotinas(void);
-void declaracao_funcao(void);
-void declaracao_procedimento(void);
-void tipo(void);
-void parametros_formais(void);
-void parametro_formal(void);
-void comando_composto(void);
-void comando(void);
-void comando_atribuicao(void);
-void comando_entrada(void);
-void comando_saida(void);
-void comando_condicional(void);
-void comando_repeticao(void);
-void lista_expressao(void);
-void expressao(void);
-void operador_relacional(void);
-void expressao_simples(void);
-void operador_adicao(void);
-void termo(void);
-void operador_multiplicacao(void);
-void fator(void);
-
-// Função consome adaptada
 void consome(TAtomo atomo_esperado) {
     if (lookahead.atomo == atomo_esperado) {
-        imprime_atomo(lookahead);
-        do {
-            lookahead = obter_atomo();
-        } while (lookahead.atomo == COMENTARIO);
+        // Imprime a saída padrão exigida no trabalho
+        if (lookahead.atomo == IDENT) {
+            printf("# %d:identificador: %s\n", lookahead.linha, lookahead.atributo.id);
+        } else if (lookahead.atomo == CONSTINT) {
+            printf("# %d:constint: %d\n", lookahead.linha, lookahead.atributo.numero);
+        } else if (lookahead.atomo == CONSTCHAR) {
+            printf("# %d:constchar: %c\n", lookahead.linha, lookahead.atributo.ch);
+        } else {
+            printf("# %d:%s\n", lookahead.linha, nome_atomo(lookahead.atomo));
+        }
+
+        lookahead = obter_proximo_token();
     } else {
-        printf("#%d: erro sintatico, esperado [%s] encontrado [%s]\n",
+        printf("# %d:erro sintatico, esperado [%s] encontrado [%s]\n",
                lookahead.linha, nome_atomo(atomo_esperado), nome_atomo(lookahead.atomo));
         exit(1);
     }
 }
 
-int main(void) {
-    lookahead = obter_atomo();
-    programa();
-
-    if (lookahead.atomo == EOS) {
-        printf("%d linhas analisadas, programa sintaticamente correto\n", lookahead.linha);
-    }
-    return 0;
-}
-
-// IMPLEMENTAÇÃO DAS REGRAS
-
-// 1. <programa> ::= algoritmo identificador ';' <bloco> '.'
-void programa(void) {
+// Regras gramaticais
+void programa() {
     consome(ALGORITMO);
     consome(IDENT);
     consome(PONTO_VIRGULA);
@@ -187,15 +157,13 @@ void programa(void) {
     consome(PONTO);
 }
 
-// 2. <bloco> ::= <declaração_variáveis> <declaração_de_rotinas> <comando_composto>
-void bloco(void) {
+void bloco() {
     declaracao_variaveis();
     declaracao_rotinas();
     comando_composto();
 }
 
-// 3. <declaração_variáveis> ::= [ var <lista_variaveis> ';' { <lista_variaveis> ';' } ]
-void declaracao_variaveis(void) {
+void declaracao_variaveis() {
     if (lookahead.atomo == VAR) {
         consome(VAR);
         lista_variaveis();
@@ -207,8 +175,7 @@ void declaracao_variaveis(void) {
     }
 }
 
-// 4. <lista_variaveis> ::= identificador { ',' identificador } ':' <tipo>
-void lista_variaveis(void) {
+void lista_variaveis() {
     consome(IDENT);
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
@@ -218,8 +185,7 @@ void lista_variaveis(void) {
     tipo();
 }
 
-// 5. <declaracao_de_rotinas> ::= { <declaração_de_função> | <declaração_de_procedimento> }
-void declaracao_rotinas(void) {
+void declaracao_rotinas() {
     while (lookahead.atomo == FUNCAO || lookahead.atomo == PROCEDIMENTO) {
         if (lookahead.atomo == FUNCAO) {
             declaracao_funcao();
@@ -229,8 +195,7 @@ void declaracao_rotinas(void) {
     }
 }
 
-// 6. <declaração_de_função>
-void declaracao_funcao(void) {
+void declaracao_funcao() {
     consome(FUNCAO);
     tipo();
     consome(IDENT);
@@ -239,8 +204,7 @@ void declaracao_funcao(void) {
     comando_composto();
 }
 
-// 7. <declaracao_de_procedimento>
-void declaracao_procedimento(void) {
+void declaracao_procedimento() {
     consome(PROCEDIMENTO);
     consome(IDENT);
     parametros_formais();
@@ -248,23 +212,18 @@ void declaracao_procedimento(void) {
     comando_composto();
 }
 
-// 8. <tipo> ::= caractere | inteiro | logico
-void tipo(void) {
-    if (lookahead.atomo == CARACTERE) {
-        consome(CARACTERE);
-    } else if (lookahead.atomo == INTEIRO) {
-        consome(INTEIRO);
-    } else if (lookahead.atomo == LOGICO) {
-        consome(LOGICO);
-    } else {
-        printf("#%d: erro sintatico, esperado [tipo] encontrado [%s]\n", 
+void tipo() {
+    if (lookahead.atomo == CARACTERE) consome(CARACTERE);
+    else if (lookahead.atomo == INTEIRO) consome(INTEIRO);
+    else if (lookahead.atomo == LOGICO) consome(LOGICO);
+    else {
+        printf("# %d:erro sintatico, esperado [tipo] encontrado [%s]\n", 
                lookahead.linha, nome_atomo(lookahead.atomo));
         exit(1);
     }
 }
 
-// 9. <parâmetros_formais>
-void parametros_formais(void) {
+void parametros_formais() {
     consome(ABRE_PAR);
     if (lookahead.atomo == VAR || lookahead.atomo == IDENT) {
         parametro_formal();
@@ -276,16 +235,14 @@ void parametros_formais(void) {
     consome(FECHA_PAR);
 }
 
-// 10. <parâmetro_formal> ::= [var] <lista_variaveis>
-void parametro_formal(void) {
+void parametro_formal() {
     if (lookahead.atomo == VAR) {
         consome(VAR);
     }
     lista_variaveis();
 }
 
-// 11. <comando_composto> ::= inicio <comando> { ';' <comando> } fim
-void comando_composto(void) {
+void comando_composto() {
     consome(INICIO);
     comando();
     while (lookahead.atomo == PONTO_VIRGULA) {
@@ -295,8 +252,7 @@ void comando_composto(void) {
     consome(FIM);
 }
 
-// 12. <comando>
-void comando(void) {
+void comando() {
     if (lookahead.atomo == LEIA) {
         comando_entrada();
     } else if (lookahead.atomo == ESCREVA) {
@@ -312,21 +268,21 @@ void comando(void) {
     }
 }
 
-// 13. <comando_atribuição>
-void comando_atribuicao(void) {
+void comando_atribuicao() {
     consome(IDENT);
     if (lookahead.atomo == ATRIB) {
         consome(ATRIB);
         expressao();
     } else if (lookahead.atomo == ABRE_PAR) {
         consome(ABRE_PAR);
-        lista_expressao();
+        if (lookahead.atomo != FECHA_PAR) {
+            lista_expressao();
+        }
         consome(FECHA_PAR);
     }
 }
 
-// 14. <comando_entrada> ::= leia '(' identificador { ',' identificador } ')'
-void comando_entrada(void) {
+void comando_entrada() {
     consome(LEIA);
     consome(ABRE_PAR);
     consome(IDENT);
@@ -337,16 +293,14 @@ void comando_entrada(void) {
     consome(FECHA_PAR);
 }
 
-// 15. <comando_saida> ::= escreva '(' <lista_expressao> ')'
-void comando_saida(void) {
+void comando_saida() {
     consome(ESCREVA);
     consome(ABRE_PAR);
     lista_expressao();
     consome(FECHA_PAR);
 }
 
-// 16. <comando_condicional> ::= se <expressao> entao <comando> [ senao <comando> ]
-void comando_condicional(void) {
+void comando_condicional() {
     consome(SE);
     expressao();
     consome(ENTAO);
@@ -357,16 +311,14 @@ void comando_condicional(void) {
     }
 }
 
-// 17. <comando_repeticao> ::= enquanto <expressao> faca <comando>
-void comando_repeticao(void) {
+void comando_repeticao() {
     consome(ENQUANTO);
     expressao();
     consome(FACA);
     comando();
 }
 
-// 18. <lista_expressao> ::= <expressao> { ',' <expressao> }
-void lista_expressao(void) {
+void lista_expressao() {
     expressao();
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
@@ -374,8 +326,7 @@ void lista_expressao(void) {
     }
 }
 
-// 19. <expressao> ::= <expressao_simples> [ <operador_relacional> <expressao_simples> ]
-void expressao(void) {
+void expressao() {
     expressao_simples();
     if (lookahead.atomo == IGUAL || lookahead.atomo == DIFERENTE ||
         lookahead.atomo == MENOR || lookahead.atomo == MENOR_IGUAL ||
@@ -385,8 +336,7 @@ void expressao(void) {
     }
 }
 
-// 20. <operador_relacional> ::= '=' | '<>' | '<' | '<=' | '>' | '>='
-void operador_relacional(void) {
+void operador_relacional() {
     if (lookahead.atomo == DIFERENTE) consome(DIFERENTE);
     else if (lookahead.atomo == MENOR) consome(MENOR);
     else if (lookahead.atomo == MENOR_IGUAL) consome(MENOR_IGUAL);
@@ -395,8 +345,7 @@ void operador_relacional(void) {
     else if (lookahead.atomo == IGUAL) consome(IGUAL);
 }
 
-// 21. <expressao_simples> ::= <termo> { <operador_adicao> <termo> }
-void expressao_simples(void) {
+void expressao_simples() {
     termo();
     while (lookahead.atomo == MAIS || lookahead.atomo == MENOS ||
            lookahead.atomo == MOD || lookahead.atomo == OU) {
@@ -405,16 +354,14 @@ void expressao_simples(void) {
     }
 }
 
-// 22. <operador_adicao> ::= '+' | '-' | mod | ou
-void operador_adicao(void) {
+void operador_adicao() {
     if (lookahead.atomo == MAIS) consome(MAIS);
     else if (lookahead.atomo == MENOS) consome(MENOS);
     else if (lookahead.atomo == MOD) consome(MOD);
     else if (lookahead.atomo == OU) consome(OU);
 }
 
-// 23. <termo> ::= <fator> { <operador_multiplicacao> <fator> }
-void termo(void) {
+void termo() {
     fator();
     while (lookahead.atomo == MULT || lookahead.atomo == DIV_OP ||
            lookahead.atomo == DIV || lookahead.atomo == E) {
@@ -423,17 +370,14 @@ void termo(void) {
     }
 }
 
-// 24. <operador_multiplicacao> ::= '*' | '/' | div | e
-void operador_multiplicacao(void) {
+void operador_multiplicacao() {
     if (lookahead.atomo == MULT) consome(MULT);
     else if (lookahead.atomo == DIV_OP) consome(DIV_OP);
     else if (lookahead.atomo == DIV) consome(DIV);
     else if (lookahead.atomo == E) consome(E);
 }
 
-// 25. <fator> ::= identificador [ '(' <lista_expressao> ')' ] | constint | constchar |
-//                 '(' <expressao> ')' | ( '+' | '-' | nao ) <fator> | verdadeiro | falso
-void fator(void) {
+void fator() {
     if (lookahead.atomo == IDENT) {
         consome(IDENT);
         if (lookahead.atomo == ABRE_PAR) {
@@ -459,8 +403,33 @@ void fator(void) {
     } else if (lookahead.atomo == FALSO) {
         consome(FALSO);
     } else {
-        printf("#%d: erro sintatico, esperado [fator] encontrado [%s]\n", 
+        printf("# %d:erro sintatico, esperado [fator] encontrado [%s]\n", 
                lookahead.linha, nome_atomo(lookahead.atomo));
         exit(1);
+    }
+}
+
+// Função de inicialização com a assinatura exata pedida na especificação
+void parse_portugol_internal_v2(FILE *arq) {
+    arquivo_fonte = arq;
+    linha = 1;
+    flag_valida_fci_2026 = 1;
+
+    // Lê a primeira linha do arquivo
+    if (fgets(buffer_linha, sizeof(buffer_linha), arquivo_fonte) != NULL) {
+        iniciar_lexico(buffer_linha, linha);
+    }
+
+    // Pega o primeiro token válido do programa
+    lookahead = obter_proximo_token();
+
+    // Inicia a validação a partir da regra principal
+    programa();
+
+    if (lookahead.atomo == EOS) {
+        printf("%d linhas analisadas, programa sintaticamente correto\n", lookahead.linha);
+    } else {
+        printf("# %d:erro sintatico, conteudo extra apos o fim do programa [%s]\n", 
+               lookahead.linha, nome_atomo(lookahead.atomo));
     }
 }

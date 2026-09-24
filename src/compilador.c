@@ -1,43 +1,26 @@
-#include <stdlib.h>
 #include <stdio.h>
-
+#include <stdlib.h>
 #include "lexAnaliser.h"
 
-// gcc -Wall -Wno-unused-result -g -Og compilador.c -o compilador 
+// Declara a função principal do Sintático
+// O nome específico é pedido pelo professor no arquivo
+void parse_portugol_internal_v2(FILE *arq);
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        printf("ERRO: Deve ser definido apenas um arquivo\n");
-        return 0;
+        printf("ERRO: Informe o arquivo de entrada. Ex: ./compilador entrada.txt\n");
+        return 1;
     }
 
-    FILE *arquivo = fopen(argv[1], "r");
-
-    if (arquivo == NULL) {
+    FILE *arquivo_fonte = fopen(argv[1], "r");
+    if (arquivo_fonte == NULL) {
         perror("ERRO: Nao foi possivel abrir o arquivo");
-        return 0;
+        return 1;
     }
 
-    char buffer[1024];
-    int linha = 1;
+    // Chama a função no Sintatico
+    parse_portugol_internal_v2(arquivo_fonte);
 
-    while (fgets(buffer, sizeof(buffer), arquivo) != NULL) {
-
-        iniciar_lexico(buffer, linha);
-
-        TInfoAtomo info;
-
-        do {
-            info = obter_atomo();
-
-            printf("Linha %d: token = %d\n", info.linha, info.atomo);
-
-        } while (info.atomo != EOS && info.atomo != ERRO);
-
-        linha++;
-    }
-
-    fclose(arquivo);
-
+    fclose(arquivo_fonte);
     return 0;
 }
