@@ -1,3 +1,9 @@
+/*
+Alunos:
+João Vitor Garcia Aguiar Mintz 10440421
+Giovanni Barreiro G. de Castro 10435745
+*/
+
 #ifndef LEXANALISER_H
 #define LEXANALISER_H
 
