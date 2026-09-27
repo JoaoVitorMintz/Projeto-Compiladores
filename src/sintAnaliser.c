@@ -1,3 +1,9 @@
+/*
+Alunos:
+João Vitor Garcia Aguiar Mintz 10440421
+Giovanni Barreiro G. de Castro 10435745
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
