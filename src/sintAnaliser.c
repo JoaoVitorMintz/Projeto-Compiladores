@@ -6,17 +6,6 @@
 // Diretiva exigida pela especificação
 int flag_valida_fci_2026 = 1;
 
-// Comparação com as enumerações d lexAnaliser.h
-#ifndef PONTO_VIRGULA
-#define PONTO_VIRGULA 50
-#define PONTO         51
-#define VIRGULA       52
-#define DOIS_PONTOS   53
-#define DIV_OP        54
-#define DIFERENTE     55
-#define NAIO          56
-#endif
-
 // Variáveis de controle de arquivo e estado do Léxico
 static FILE *arquivo_fonte = NULL;
 static char buffer_linha[1024];
@@ -54,17 +43,16 @@ void operador_multiplicacao();
 void fator();
 
 // Obtém o próximo token tratando mudanças de linha e ignorando comentários
-TInfoAtomo obter_proximo_token() {
+TInfoAtomo obter_proximo_token(void) {
     TInfoAtomo info = obter_atomo();
 
     while (1) {
-        // Se for um comentário, ignora e busca o próximo
         if (info.atomo == COMENTARIO) {
+            printf("# %d:comentario\n", info.linha);
             info = obter_atomo();
             continue;
         }
 
-        // Se a linha terminou (EOS), carrega a próxima linha do arquivo
         if (info.atomo == EOS) {
             if (arquivo_fonte != NULL && fgets(buffer_linha, sizeof(buffer_linha), arquivo_fonte) != NULL) {
                 linha++;
@@ -104,9 +92,37 @@ const char* nome_atomo(TAtomo atomo) {
         case E: return "e";
         case MOD: return "mod";
         case DIV: return "div";
+        case NAO: return "nao";
         case IDENT: return "identificador";
         case CONSTINT: return "constint";
         case CONSTCHAR: return "constchar";
+        case PONTO_VIRGULA: return "ponto_virgula";
+        case PONTO: return "ponto";
+        case VIRGULA: return "virgula";
+        case DOIS_PONTOS: return "dois_pontos";
+        case ATRIB: return "atribuicao";
+        case ABRE_PAR: return "abre_par";
+        case FECHA_PAR: return "fecha_par";
+        case ABRE_CHAVE: return "abre_chave";
+        case FECHA_CHAVE: return "fecha_chave";
+        case IGUAL: return "igual";
+        case MENOR: return "menor";
+        case MENOR_IGUAL: return "menor_igual";
+        case MAIOR: return "maior";
+        case MAIOR_IGUAL: return "maior_igual";
+        case DIFERENTE: return "diferente";
+        case MAIS: return "mais";
+        case MENOS: return "menos";
+        case MULT: return "multiplicacao";
+        case DIV_OP: return "divisao";
+        case EOS: return "fim de arquivo";
+        default: return "simbolo";
+    }
+}
+
+// Função para exibir o símbolo literal quando ocorrer erro sintático
+const char* simbolo_atomo(TAtomo atomo) {
+    switch((int)atomo) {
         case PONTO_VIRGULA: return ";";
         case PONTO: return ".";
         case VIRGULA: return ",";
@@ -114,31 +130,30 @@ const char* nome_atomo(TAtomo atomo) {
         case ATRIB: return ":=";
         case ABRE_PAR: return "(";
         case FECHA_PAR: return ")";
+        case ABRE_CHAVE: return "{";
+        case FECHA_CHAVE: return "}";
         case IGUAL: return "=";
         case MENOR: return "<";
         case MENOR_IGUAL: return "<=";
         case MAIOR: return ">";
         case MAIOR_IGUAL: return ">=";
+        case DIFERENTE: return "<>";
         case MAIS: return "+";
         case MENOS: return "-";
         case MULT: return "*";
-        case EOS: return "fim de arquivo";
-        default: return "simbolo";
+        case DIV_OP: return "/";
+        default: return nome_atomo(atomo);
     }
 }
 
 void consome(TAtomo atomo_esperado) {
     if (lookahead.atomo == atomo_esperado) {
-        // Imprime a saída padrão
         if (lookahead.atomo == IDENT) {
             printf("# %d:identificador: %s\n", lookahead.linha, lookahead.atributo.id);
-            
         } else if (lookahead.atomo == CONSTINT) {
             printf("# %d:constint: %d\n", lookahead.linha, lookahead.atributo.numero);
-            
         } else if (lookahead.atomo == CONSTCHAR) {
             printf("# %d:constchar: %c\n", lookahead.linha, lookahead.atributo.ch);
-            
         } else {
             printf("# %d:%s\n", lookahead.linha, nome_atomo(lookahead.atomo));
         }
@@ -146,12 +161,14 @@ void consome(TAtomo atomo_esperado) {
         lookahead = obter_proximo_token();
     } else {
         printf("# %d:erro sintatico, esperado [%s] encontrado [%s]\n",
-               lookahead.linha, nome_atomo(atomo_esperado), nome_atomo(lookahead.atomo));
+               lookahead.linha, 
+               simbolo_atomo(atomo_esperado), 
+               simbolo_atomo(lookahead.atomo));
         exit(1);
     }
 }
 
-// Algumas regras gramaticais
+// Regras gramaticais
 void programa() {
     consome(ALGORITMO);
     consome(IDENT);
@@ -396,10 +413,10 @@ void fator() {
         consome(ABRE_PAR);
         expressao();
         consome(FECHA_PAR);
-    } else if (lookahead.atomo == MAIS || lookahead.atomo == MENOS || lookahead.atomo == NAIO) {
+    } else if (lookahead.atomo == MAIS || lookahead.atomo == MENOS || lookahead.atomo == NAO) {
         if (lookahead.atomo == MAIS) consome(MAIS);
         else if (lookahead.atomo == MENOS) consome(MENOS);
-        else consome(NAIO);
+        else consome(NAO);
         fator();
     } else if (lookahead.atomo == VERDADEIRO) {
         consome(VERDADEIRO);
@@ -412,25 +429,21 @@ void fator() {
     }
 }
 
-// Função de inicialização com a assinatura pedida pelo professor
+// Função de inicialização com a assinatura exata pedida na especificação
 void parse_portugol_internal_v2(FILE *arq) {
     arquivo_fonte = arq;
-    linha = 1;
-    flag_valida_fci_2026 = 1;
+    linha = 1; // Força a contagem a iniciar na linha 1
 
-    // Lê a primeira linha do arquivo
     if (fgets(buffer_linha, sizeof(buffer_linha), arquivo_fonte) != NULL) {
         iniciar_lexico(buffer_linha, linha);
     }
 
-    // Pega o primeiro token válido do programa
     lookahead = obter_proximo_token();
 
-    // Inicia a validação a partir da regra principal
     programa();
 
     if (lookahead.atomo == EOS) {
-        printf("%d linhas analisadas, programa sintaticamente correto\n", lookahead.linha);
+        printf("%d linhas analisadas, programa sintaticamente correto\n", linha);
     } else {
         printf("# %d:erro sintatico, conteudo extra apos o fim do programa [%s]\n", 
                lookahead.linha, nome_atomo(lookahead.atomo));
