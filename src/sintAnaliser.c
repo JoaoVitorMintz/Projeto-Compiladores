@@ -110,6 +110,7 @@ const char* nome_atomo(TAtomo atomo) {
         case MENOR_IGUAL: return "menor_igual";
         case MAIOR: return "maior";
         case MAIOR_IGUAL: return "maior_igual";
+        case DIFERENTE: return "diferente";
         case MAIS: return "mais";
         case MENOS: return "menos";
         case MULT: return "multiplicacao";
@@ -135,6 +136,7 @@ const char* simbolo_atomo(TAtomo atomo) {
         case MENOR_IGUAL: return "<=";
         case MAIOR: return ">";
         case MAIOR_IGUAL: return ">=";
+        case DIFERENTE: return "<>";
         case MAIS: return "+";
         case MENOS: return "-";
         case MULT: return "*";
@@ -353,7 +355,8 @@ void expressao() {
 }
 
 void operador_relacional() {
-    if (lookahead.atomo == MENOR) consome(MENOR);
+    if (lookahead.atomo == DIFERENTE) consome(DIFERENTE);
+    else if (lookahead.atomo == MENOR) consome(MENOR);
     else if (lookahead.atomo == MENOR_IGUAL) consome(MENOR_IGUAL);
     else if (lookahead.atomo == MAIOR_IGUAL) consome(MAIOR_IGUAL);
     else if (lookahead.atomo == MAIOR) consome(MAIOR);
