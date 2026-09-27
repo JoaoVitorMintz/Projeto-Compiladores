@@ -23,6 +23,7 @@ typedef enum {
     ATRIB,       // :=
     MAIOR_IGUAL, // >=
     MENOR_IGUAL, // <=
+    DIFERENTE,   // <>
 
     ABRE_PAR,    // (
     FECHA_PAR,   // )
