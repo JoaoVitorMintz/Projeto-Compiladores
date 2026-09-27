@@ -4,31 +4,37 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#include <stdlib.h> // atof
+#include <stdlib.h> 
 
 // Definição de TOKENS/ATOMOS:
 typedef enum {
     ERRO,
     IDENT,
-    CONSTCHAR, // Específico do portugol
-    CONSTINT, // Específico do portugol
+    CONSTCHAR, 
+    CONSTINT, 
     EOS,
 
-    MAIS, // +
-    MENOS, // -
-    MULT, // *
-    MAIOR, // >
-    MENOR, // <
-    IGUAL, // =
-    ATRIB, // :=
+    MAIS,        // +
+    MENOS,       // -
+    MULT,        // *
+    DIV_OP,      // /  <-- ADICIONADO
+    MAIOR,       // >
+    MENOR,       // <
+    IGUAL,       // =
+    ATRIB,       // :=
     MAIOR_IGUAL, // >=
     MENOR_IGUAL, // <=
+    DIFERENTE,   // <> <-- ADICIONADO
 
-    ABRE_PAR, // (
-    FECHA_PAR, // )
-    ABRE_CHAVE, // {
+    ABRE_PAR,    // (
+    FECHA_PAR,   // )
+    ABRE_CHAVE,  // {
     FECHA_CHAVE, // }
-    COMENTARIO,
+    COMENTARIO,  
+    PONTO_VIRGULA, // ;
+    PONTO,        // .
+    DOIS_PONTOS,  // :
+    VIRGULA,      // ,
 
     ALGORITMO,
     CARACTERE,
@@ -46,6 +52,7 @@ typedef enum {
     LEIA,
     LOGICO,
     MOD,
+    NAO,         
     OU,
     PROCEDIMENTO,
     SE,
@@ -58,13 +65,13 @@ typedef struct {
     TAtomo atomo;
     int linha;
     union {
-        int numero; // atributo do átomo constint (constante inteira)
-        char id[16]; // atributo identificador
-        char ch; // atributo do átomo constchar (constante caractere)
+        int numero; 
+        char id[16]; 
+        char ch; 
     } atributo;
 } TInfoAtomo;
 
-TInfoAtomo obter_atomo(void); // Implementado no analisador léxico
+TInfoAtomo obter_atomo(void); 
 void reconhece_numero(TInfoAtomo *info_atomo);
 void reconhece_id(TInfoAtomo *info_atomo);
 void iniciar_lexico(char *buffer_linha, int i);
