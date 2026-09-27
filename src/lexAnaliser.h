@@ -17,14 +17,12 @@ typedef enum {
     MAIS,        // +
     MENOS,       // -
     MULT,        // *
-    DIV_OP,      // /  <-- ADICIONADO
     MAIOR,       // >
     MENOR,       // <
     IGUAL,       // =
     ATRIB,       // :=
     MAIOR_IGUAL, // >=
     MENOR_IGUAL, // <=
-    DIFERENTE,   // <> <-- ADICIONADO
 
     ABRE_PAR,    // (
     FECHA_PAR,   // )

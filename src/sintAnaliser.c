@@ -110,11 +110,9 @@ const char* nome_atomo(TAtomo atomo) {
         case MENOR_IGUAL: return "menor_igual";
         case MAIOR: return "maior";
         case MAIOR_IGUAL: return "maior_igual";
-        case DIFERENTE: return "diferente";
         case MAIS: return "mais";
         case MENOS: return "menos";
         case MULT: return "multiplicacao";
-        case DIV_OP: return "divisao";
         case EOS: return "fim de arquivo";
         default: return "simbolo";
     }
@@ -137,11 +135,9 @@ const char* simbolo_atomo(TAtomo atomo) {
         case MENOR_IGUAL: return "<=";
         case MAIOR: return ">";
         case MAIOR_IGUAL: return ">=";
-        case DIFERENTE: return "<>";
         case MAIS: return "+";
         case MENOS: return "-";
         case MULT: return "*";
-        case DIV_OP: return "/";
         default: return nome_atomo(atomo);
     }
 }
@@ -348,17 +344,16 @@ void lista_expressao() {
 
 void expressao() {
     expressao_simples();
-    if (lookahead.atomo == IGUAL || lookahead.atomo == DIFERENTE ||
-        lookahead.atomo == MENOR || lookahead.atomo == MENOR_IGUAL ||
-        lookahead.atomo == MAIOR || lookahead.atomo == MAIOR_IGUAL) {
+    if (lookahead.atomo == IGUAL || lookahead.atomo == MENOR || 
+        lookahead.atomo == MENOR_IGUAL || lookahead.atomo == MAIOR || 
+        lookahead.atomo == MAIOR_IGUAL) {
         operador_relacional();
         expressao_simples();
     }
 }
 
 void operador_relacional() {
-    if (lookahead.atomo == DIFERENTE) consome(DIFERENTE);
-    else if (lookahead.atomo == MENOR) consome(MENOR);
+    if (lookahead.atomo == MENOR) consome(MENOR);
     else if (lookahead.atomo == MENOR_IGUAL) consome(MENOR_IGUAL);
     else if (lookahead.atomo == MAIOR_IGUAL) consome(MAIOR_IGUAL);
     else if (lookahead.atomo == MAIOR) consome(MAIOR);
@@ -383,8 +378,8 @@ void operador_adicao() {
 
 void termo() {
     fator();
-    while (lookahead.atomo == MULT || lookahead.atomo == DIV_OP ||
-           lookahead.atomo == DIV || lookahead.atomo == E) {
+    while (lookahead.atomo == MULT || lookahead.atomo == DIV || 
+        lookahead.atomo == E) {
         operador_multiplicacao();
         fator();
     }
@@ -392,7 +387,6 @@ void termo() {
 
 void operador_multiplicacao() {
     if (lookahead.atomo == MULT) consome(MULT);
-    else if (lookahead.atomo == DIV_OP) consome(DIV_OP);
     else if (lookahead.atomo == DIV) consome(DIV);
     else if (lookahead.atomo == E) consome(E);
 }
