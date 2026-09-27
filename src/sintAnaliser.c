@@ -6,7 +6,7 @@
 // Diretiva exigida pela especificação
 int flag_valida_fci_2026 = 1;
 
-// Compatibilidade de enumerações com o lexAnaliser.h
+// Comparação com as enumerações d lexAnaliser.h
 #ifndef PONTO_VIRGULA
 #define PONTO_VIRGULA 50
 #define PONTO         51
@@ -129,13 +129,16 @@ const char* nome_atomo(TAtomo atomo) {
 
 void consome(TAtomo atomo_esperado) {
     if (lookahead.atomo == atomo_esperado) {
-        // Imprime a saída padrão exigida no trabalho
+        // Imprime a saída padrão
         if (lookahead.atomo == IDENT) {
             printf("# %d:identificador: %s\n", lookahead.linha, lookahead.atributo.id);
+            
         } else if (lookahead.atomo == CONSTINT) {
             printf("# %d:constint: %d\n", lookahead.linha, lookahead.atributo.numero);
+            
         } else if (lookahead.atomo == CONSTCHAR) {
             printf("# %d:constchar: %c\n", lookahead.linha, lookahead.atributo.ch);
+            
         } else {
             printf("# %d:%s\n", lookahead.linha, nome_atomo(lookahead.atomo));
         }
@@ -148,7 +151,7 @@ void consome(TAtomo atomo_esperado) {
     }
 }
 
-// Regras gramaticais
+// Algumas regras gramaticais
 void programa() {
     consome(ALGORITMO);
     consome(IDENT);
@@ -409,7 +412,7 @@ void fator() {
     }
 }
 
-// Função de inicialização com a assinatura exata pedida na especificação
+// Função de inicialização com a assinatura pedida pelo professor
 void parse_portugol_internal_v2(FILE *arq) {
     arquivo_fonte = arq;
     linha = 1;
