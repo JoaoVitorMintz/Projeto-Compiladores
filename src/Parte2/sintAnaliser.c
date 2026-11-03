@@ -9,9 +9,6 @@ Giovanni Barreiro G. de Castro 10435745
 #include <string.h>
 #include "lexAnaliser.h"
 
-// Diretiva exigida pela especificação
-int flag_valida_fci_2026 = 1;
-
 // Variáveis de controle de arquivo e estado do Léxico
 static FILE *arquivo_fonte = NULL;
 static char buffer_linha[1024];
@@ -433,7 +430,7 @@ void fator() {
 }
 
 // Função de inicialização com a assinatura exata pedida na especificação
-void parse_portugol_internal_v2(FILE *arq) {
+void iniciar_sintatico(FILE *arq) {
     arquivo_fonte = arq;
     linha = 1; // Força a contagem a iniciar na linha 1
 

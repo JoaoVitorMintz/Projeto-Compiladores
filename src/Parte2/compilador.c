@@ -11,7 +11,7 @@ Giovanni Barreiro G. de Castro 10435745
 
 // Declara a função principal do Sintático
 // O nome específico é pedido pelo professor no arquivo
-void parse_portugol_internal_v2(FILE *arq);
+void iniciar_sintatico(FILE *arq);
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Chama a função no Sintatico
-    parse_portugol_internal_v2(arquivo_fonte);
+    iniciar_sintatico(arquivo_fonte);
 
     fclose(arquivo_fonte);
     return 0;
