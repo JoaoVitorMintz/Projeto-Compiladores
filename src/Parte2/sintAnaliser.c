@@ -238,7 +238,7 @@ void tipo() {
     else if (lookahead.atomo == INTEIRO) consome(INTEIRO);
     else if (lookahead.atomo == LOGICO) consome(LOGICO);
     else {
-        printf("# %d:erro sintatico, esperado [tipo] encontrado [%s]\n", 
+        printf("# %d:erro sintatico, esperado [tipo] encontrado [%s]\n", // Mensagem de Erro Sintático de Tipo
                lookahead.linha, nome_atomo(lookahead.atomo));
         exit(1);
     }
@@ -286,6 +286,11 @@ void comando() {
         comando_composto();
     } else if (lookahead.atomo == IDENT) {
         comando_atribuicao();
+    } else {
+        // Mensagem de Erro
+        printf("# %d:erro sintatico, esperado [comando] encontrado [%s]\n", 
+               lookahead.linha, nome_atomo(lookahead.atomo));
+        exit(1);
     }
 }
 
@@ -449,3 +454,17 @@ void iniciar_sintatico(FILE *arq) {
                lookahead.linha, nome_atomo(lookahead.atomo));
     }
 }
+
+/*
+
+=====================================================================================
+
+                    ANALISADOR SEMÂNTICO
+
+=====================================================================================
+
+
+*/
+
+
+// TODO: Começar a implementação do Analisador Semântico e o MEPA

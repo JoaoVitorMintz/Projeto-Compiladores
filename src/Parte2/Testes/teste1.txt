@@ -1,0 +1,21 @@
+{- testa rotinas com parametros -}
+
+algoritmo ex3;
+var a, b, r: inteiro;
+
+funcao inteiro dobro(x: inteiro)
+inicio
+    dobro := x * 2
+fim
+
+procedimento mostra(v: inteiro)
+inicio
+    escreva(v)
+fim
+
+inicio
+    a := 5;
+    b := 7;
+    r := dobro(a) + dobro(b);
+    mostra(r)
+fim.

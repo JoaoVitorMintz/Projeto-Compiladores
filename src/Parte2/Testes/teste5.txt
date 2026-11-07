@@ -1,0 +1,8 @@
+algoritmo pv4;
+var x: inteiro;
+inicio
+    inicio
+        x := 1
+    fim;
+    x := 2
+fim.

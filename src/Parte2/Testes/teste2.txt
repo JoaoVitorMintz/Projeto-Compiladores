@@ -1,0 +1,5 @@
+algoritmo pv1;
+var x: inteiro;
+inicio
+    x := 1;
+fim.

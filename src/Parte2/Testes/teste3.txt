@@ -1,0 +1,11 @@
+algoritmo pv2;
+var r: inteiro;
+
+funcao inteiro dobro(x: inteiro)
+inicio
+    dobro := x * 2
+fim;
+
+inicio
+    r := dobro(3)
+fim.

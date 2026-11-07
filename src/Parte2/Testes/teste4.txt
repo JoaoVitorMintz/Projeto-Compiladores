@@ -1,0 +1,9 @@
+algoritmo pv3;
+var x, y: inteiro;
+inicio
+    leia(x);
+    se x > 0 entao
+        y := 1;
+    senao
+        y := 2
+fim.
