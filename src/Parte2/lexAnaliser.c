@@ -331,7 +331,7 @@ TInfoAtomo obter_atomo(void) {
     return info;
 }
 
-// Função temporária para teste
+// Função para iniciar os dados em buffer a serem analisados pelo léxico 
 void iniciar_lexico(char *buffer_linha, int i) {
     linha = i;
     buffer = buffer_linha;
