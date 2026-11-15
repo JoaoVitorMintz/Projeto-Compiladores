@@ -10,8 +10,8 @@ Giovanni Barreiro G. de Castro 10435745
 #include "lexAnaliser.h"
 
 // Declara a função principal do Sintático
-// O nome específico é pedido pelo professor no arquivo
 void iniciar_sintatico(FILE *arq);
+void iniciar_MEPA(FILE *arq);
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -27,6 +27,9 @@ int main(int argc, char *argv[]) {
 
     // Chama a função no Sintatico
     iniciar_sintatico(arquivo_fonte);
+
+    // Chama a função do MEPA
+    iniciar_MEPA(arquivo_fonte);
 
     fclose(arquivo_fonte);
     return 0;
