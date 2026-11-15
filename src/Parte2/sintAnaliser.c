@@ -523,6 +523,10 @@ void iniciar_MEPA(FILE *arq){
     programa();
 }
 
+// O LEIT e o DMEM já fazem parte de outras funções
+
+// Função que chama os operadores
+// *op são os operadores dados em char ("INPP", por exemplo)
 void mepa(const char *op) {
     // Inicializador do MEPA (INPP e PARA)
     // Os espaços na tela são para dar aqueles mesmos espaços que o professor tem nos exemplos dele
@@ -533,6 +537,7 @@ void mepa(const char *op) {
 void AMEM(const char *op, int n) {
     // AMEM (declaração de variáveis globais)
     if (gerador_MEPA) printf("    %s %d\n", op, n);
+    // O DMEM também funciona aqui, foi alterado na função bloco()
 }
 
 
