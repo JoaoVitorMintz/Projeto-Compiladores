@@ -17,13 +17,20 @@ extern int linha;
 
 TInfoAtomo lookahead;
 
+// Variável global de validador do MEPA
+int gerador_MEPA = 0; // Apenas validador do mepa, quando é chamado ele valida como 1
+
+// rotótipos de Funções para o MEPA
+void mepa(const char *op);
+void AMEM(const char *op, int n);
+
 // Protótipos das regras da gramática
 void consome(TAtomo atomo_esperado);
 const char* nome_atomo(TAtomo atomo);
 void programa();
 void bloco();
-void declaracao_variaveis();
-void lista_variaveis();
+int declaracao_variaveis(); // Mudança de void para int
+int lista_variaveis();      // para retornar os valores para o AMEM
 void declaracao_rotinas();
 void declaracao_funcao();
 void declaracao_procedimento();
@@ -52,7 +59,9 @@ TInfoAtomo obter_proximo_token(void) {
 
     while (1) {
         if (info.atomo == COMENTARIO) {
-            printf("# %d:comentario\n", info.linha);
+            // Comentando essa parte para não perder a coesão com a parte 1
+            // Retirando os prints da impressão de análise sintática
+            // printf("# %d:comentario\n", info.linha);
             info = obter_atomo();
             continue;
         }
@@ -150,6 +159,9 @@ const char* simbolo_atomo(TAtomo atomo) {
 
 void consome(TAtomo atomo_esperado) {
     if (lookahead.atomo == atomo_esperado) {
+
+        // Remoção dos PRINTs da análise sintática
+        /*
         if (lookahead.atomo == IDENT) {
             printf("# %d:identificador: %s\n", lookahead.linha, lookahead.atributo.id);
         } else if (lookahead.atomo == CONSTINT) {
@@ -159,6 +171,7 @@ void consome(TAtomo atomo_esperado) {
         } else {
             printf("# %d:%s\n", lookahead.linha, nome_atomo(lookahead.atomo));
         }
+        */
 
         lookahead = obter_proximo_token();
     } else {
@@ -175,36 +188,60 @@ void programa() {
     consome(ALGORITMO);
     consome(IDENT);
     consome(PONTO_VIRGULA);
+        
+    // Início para o MEPA
+    mepa("INPP");
     bloco();
     consome(PONTO);
+    mepa("PARA");
 }
 
 void bloco() {
-    declaracao_variaveis();
+    // Busca o número de variáveis para o MEPA também
+    int num_var = declaracao_variaveis();
+    if (num_var) {
+        // Chama a função da declaração de variáveis globais
+        AMEM("AMEM", num_var);
+    }
+
     declaracao_rotinas();
     comando_composto();
-}
 
-void declaracao_variaveis() {
-    if (lookahead.atomo == VAR) {
-        consome(VAR);
-        lista_variaveis();
-        consome(PONTO_VIRGULA);
-        while (lookahead.atomo == IDENT) {
-            lista_variaveis();
-            consome(PONTO_VIRGULA);
-        }
+    // Busca as mesmas variáveis para retirar da memória
+    if (num_var > 0) {
+        // Chama a função para liberação da memória
+        AMEM("DMEM", num_var);
     }
 }
 
-void lista_variaveis() {
+int declaracao_variaveis() {
+    int total_var = 0;
+    if (lookahead.atomo == VAR) {
+        consome(VAR);
+        total_var += lista_variaveis();
+        consome(PONTO_VIRGULA);
+        while (lookahead.atomo == IDENT) {
+            total_var += lista_variaveis();
+            consome(PONTO_VIRGULA);
+        }
+    }
+    return total_var;
+}
+
+int lista_variaveis() {
+    // Soma das variáveis para o MEPA
+    int n = 1;
+
     consome(IDENT);
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
         consome(IDENT);
+        // n++ realiza a soma
+        n++;
     }
     consome(DOIS_PONTOS);
     tipo();
+    return n; // A função agora é int para retornar os valores (isso se aplica a declaracao_variaveis e lista_variaveis)
 }
 
 void declaracao_rotinas() {
@@ -312,9 +349,11 @@ void comando_atribuicao() {
 void comando_entrada() {
     consome(LEIA);
     consome(ABRE_PAR);
+    mepa("LEIT"); // Chama o LEIT (Leitura) no MEPA
     consome(IDENT);
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
+        mepa("LEIT");
         consome(IDENT);
     }
     consome(FECHA_PAR);
@@ -324,6 +363,7 @@ void comando_saida() {
     consome(ESCREVA);
     consome(ABRE_PAR);
     lista_expressao();
+    mepa("IMPR"); // Chama o IMPR (impressão) em MEPA
     consome(FECHA_PAR);
 }
 
@@ -460,6 +500,58 @@ void iniciar_sintatico(FILE *arq) {
 
 =====================================================================================
 
+                    GERAÇÃO DE CÓDIGO MEPA
+
+=====================================================================================
+
+
+*/
+
+// Para a impressão da MEPA, vou manter os prints porém vou comentá-los, para manter a coesão com o código anterior
+// Aqui eu só copiei o iniciar_sintático, ou seja, ele relê o arquivo inteiro para montar o MEPA, por isso do rewind
+void iniciar_MEPA(FILE *arq){
+    rewind(arq);
+    arquivo_fonte = arq;
+    linha = 1; // Força a contagem a iniciar na linha 1
+
+    if (fgets(buffer_linha, sizeof(buffer_linha), arquivo_fonte) != NULL) {
+        iniciar_lexico(buffer_linha, linha);
+    }
+
+    lookahead = obter_proximo_token();
+
+    gerador_MEPA = 1;
+    programa();
+}
+
+// O LEIT e o DMEM já fazem parte de outras funções
+
+// Função que chama os operadores
+// *op são os operadores dados em char ("INPP", por exemplo)
+void mepa(const char *op) {
+    // Inicializador do MEPA (INPP e PARA)
+    // Os espaços na tela são para dar aqueles mesmos espaços que o professor tem nos exemplos dele
+    // para deixar mais bonitinho e organizado.
+    if (gerador_MEPA) printf("    %s\n", op);
+}
+
+void AMEM(const char *op, int n) {
+    // AMEM (declaração de variáveis globais)
+    if (gerador_MEPA) printf("    %s %d\n", op, n);
+    // O DMEM também funciona aqui, foi alterado na função bloco()
+}
+
+
+// TODO: Continuar a implementação do MEPA (falta bastante coisa ainda)
+// Para o exemplo que eu estou usando (teste 6) falta: 
+// CRVL; CRCT; DSVS; MULT; ARMZ;
+// Também falta os L1; L2, etc
+
+
+/*
+
+=====================================================================================
+
                     ANALISADOR SEMÂNTICO
 
 =====================================================================================
@@ -468,4 +560,4 @@ void iniciar_sintatico(FILE *arq) {
 */
 
 
-// TODO: Começar a implementação do Analisador Semântico e o MEPA
+// TODO: Começar a implementação do Analisador Semântico
