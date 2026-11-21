@@ -24,6 +24,7 @@ typedef struct _TNo{
    int endereco;
    TCategoria categoria;
    TTipo tipo;
+   int escopo; // 1 para global e 0 para local
  
    struct _TNo *prox; 
 } TNo;
@@ -32,8 +33,9 @@ typedef struct {
     TNo *entradas[PRIME_NUMBER]; 
 } TTabelaSimbolos;
 
-void inserir_tabela(char *s, TCategoria categoria, TTipo tipo);
+void inserir_tabela(char *s, TCategoria categoria, TTipo tipo, int escopo);
 void inicializa_tabela();
 void liberar_tabela();
+TNo* buscar_simbolo(char *s);
 
 #endif

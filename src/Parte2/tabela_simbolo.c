@@ -1,18 +1,16 @@
 // Tabela de simbolos desenvolvida pelos alunos
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include "tabela_simbolo.h"
 
-#define PRIME_NUMBER 211  // numero primo para reduzir colisoes  
+TTabelaSimbolos tabela; // Tabela global
 
 int hashMack(char *s);
 
-
 // Inicio da nossa implementação:
-void inserir_tabela(char *s, TCategoria categoria, TTipo tipo) {
+void inserir_tabela(char *s, TCategoria categoria, TTipo tipo, int escopo) {
     int valor_hash = 0;
-    TTabelaSimbolos tabela;
+    
     // Iniciando como um ponteiro para poder, ao criar uma lista, apontar para outro nó
     TNo *no;
 
@@ -41,6 +39,7 @@ void inserir_tabela(char *s, TCategoria categoria, TTipo tipo) {
         no->endereco = valor_hash;
         no->categoria = categoria;
         no->tipo = tipo;
+        no->escopo = escopo;
     } else {
         // Se não, já insere direto nesse endereço
         strncpy(no->ID, s, tamanho_ID);
@@ -48,6 +47,7 @@ void inserir_tabela(char *s, TCategoria categoria, TTipo tipo) {
         no->endereco = valor_hash;
         no->categoria = categoria;
         no->tipo = tipo;
+        no->escopo = escopo;
     }
     
     // Após preencher o nó de determinada posição da tabela, ele pega e cria um novo nó para começar inserir caso outro
@@ -56,18 +56,26 @@ void inserir_tabela(char *s, TCategoria categoria, TTipo tipo) {
     no->prox = novoNo;
 
     tabela.entradas[valor_hash] = no;
-    
-    return valor_hash;
+}
+
+TNo* buscar_simbolo(char *s) { // * pois vai retornar o ponteiro do nó com os valores atribuídos ao valor que busca
+    int valor_hash = hashMack(s);
+    TNo *no = tabela.entradas[valor_hash]; // Acessa o nó da posição na tabela
+
+    while (no != NULL) {
+        if (strcmp(no->ID, s) == 0) { // Faz String Compare para ver se o ID que temos é igual o solicitado
+            return no; // caso seja, retorna este nó
+        }
+        no = no->prox; // Passa de nó em nó
+    }
+    // Caso não encontre o nó (não foi inserido anteriormente na tabela), retorna NULL.
+    return NULL;
 }
 
 // VALIDAR SE PODE INICIAR A TABELA OU SE SÓ PODE O HASHMACK
 void inicializa_tabela() {
-    TTabelaSimbolos tabela;
-    // Iniciando como um ponteiro para poder, ao criar uma lista, apontar para outro nó
-    TNo *no;
-
     /* 
-    Insere na tabela que é um vetor vários nós vazios. Dentro de hashMack irá inserir na tabela os valores daquela
+    Insere na tabela que é um vetor vários nós vazios. Dentro de inserir_tabela irá inserir os valores daquela
     posição e criar um novo nó daquela posição na lista. Caso não seja um nó vazio, ele apenas insere no nó vazio
     da lista, mas isso no hashMack
     */
@@ -75,4 +83,24 @@ void inicializa_tabela() {
         tabela.entradas[i] = NULL;
     }
 
+}
+
+// Função para liberar a tabela da memória
+void liberar_tabela() {
+    TNo *no;
+    TNo *proximo;
+
+    // Passa por cada posição da tabela
+    for (int i = 0; i < PRIME_NUMBER; i++) {
+        no = tabela.entradas[i]; // Pega o nó da posição da tabela
+
+        while (no != NULL) { // Enquanto não tiver uma lista encadeada naquela posição da tabela
+            proximo = no->prox; // Salva o ponteiro do próximo nó
+
+            free(no); // Libera o nó
+
+            no = proximo; // Prossegue para próximo nó
+        }
+        tabela.entradas[i] = NULL; // Após limpar a lista na posição da tabela, atribui null
+    }
 }
