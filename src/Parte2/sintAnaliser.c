@@ -8,6 +8,7 @@ Giovanni Barreiro G. de Castro 10435745
 #include <stdlib.h>
 #include <string.h>
 #include "lexAnaliser.h"
+#include "tabela_simbolo.h"
 
 // Variáveis de controle de arquivo e estado do Léxico
 static FILE *arquivo_fonte = NULL;
