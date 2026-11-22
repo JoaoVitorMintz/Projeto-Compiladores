@@ -40,4 +40,8 @@ TNo* buscar_simbolo(char *s);
 void imprimir_tabela();
 void atualizar_no_tipo(char *s, TTipo tipo);
 
+char *imprimir_categoria(TCategoria categoria);
+char *imprimir_tipo(TTipo tipo);
+char *imprimir_escopo(int escopo);
+
 #endif
