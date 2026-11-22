@@ -17,7 +17,6 @@ extern int linha;
 
 TInfoAtomo lookahead;
 
-
 int contador_L = 0; // Contador do MEPA para as chamadas de funções e desvios
 // L1: NADA, DSVS L2 e DSVF L3 por exemplo
 int escopo_atual = 0; // Escopo inicial é dado como global e, caso necessário, troca para local
@@ -27,11 +26,13 @@ TCategoria categoria_atual = S_VARIAVEL; // Categoria global que se altera de ac
 
 // protótipos de Funções para o MEPA e Semantico
 void mepa(const char *op);
-void AMEM(const char *op, int n);
+void mepa_n(const char *op, int n);
+void mepa_nn(const char *op, int n, int d);
 int rotulos();
 void desvia(const char *op, int rot);
 void LN_NADA(int rot);
 void erro_semantico(char *motivo, char *ID);
+void verifica_duplicado(char *nome);
 
 // Protótipos das regras da gramática
 void consome(TAtomo atomo_esperado);
@@ -210,7 +211,7 @@ void bloco() {
     int num_var = declaracao_variaveis();
     if (num_var) {
         // Chama a função da declaração de variáveis globais
-        AMEM("AMEM", num_var);
+        mepa_n("AMEM", num_var);
     }
 
     int rotulo_Main = 0;
@@ -231,7 +232,7 @@ void bloco() {
     // Busca as mesmas variáveis para retirar da memória
     if (num_var > 0) {
         // Chama a função para liberação da memória
-        AMEM("DMEM", num_var);
+        mepa_n("DMEM", num_var);
     }
 }
 
@@ -253,14 +254,19 @@ int declaracao_variaveis() {
 int lista_variaveis() {
     // Soma das variáveis para o MEPA
     int n = 1;
+    TNo *inseridos[64]; // nós criados nesta lista, para acertar o tipo depois
 
+    verifica_duplicado(lookahead.atributo.id);
     // Feito dentro de lista_variaveis pois é aqui que pega cada uma das variáveis e salva seus IDs
     inserir_tabela(lookahead.atributo.id, deslocamento_atual, categoria_atual, tipo_atual, escopo_atual);
+    inseridos[0] = buscar_simbolo(lookahead.atributo.id);
     deslocamento_atual += 1;
     consome(IDENT);
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
+        verifica_duplicado(lookahead.atributo.id); // verifica constante se é duplicado para verificação do semântico
         inserir_tabela(lookahead.atributo.id, deslocamento_atual, categoria_atual, tipo_atual, escopo_atual); // Justamente para pegar CADA variável e salvar na tabela
+        inseridos[n] = buscar_simbolo(lookahead.atributo.id);
         deslocamento_atual += 1;
         consome(IDENT);
         // n++ realiza a soma
@@ -268,6 +274,12 @@ int lista_variaveis() {
     }
     consome(DOIS_PONTOS);
     tipo();
+
+    // Tipo desta lista é conhecido: corrige o tipo de cada variável inserida
+    for (int i = 0; i < n; i++) {
+        inseridos[i]->tipo = tipo_atual;
+    }
+
     return n; // A função agora é int para retornar os valores (isso se aplica a declaracao_variaveis e lista_variaveis)
 }
 
@@ -388,7 +400,7 @@ void comando_atribuicao() {
     if (lookahead.atomo == ATRIB) {
         consome(ATRIB);
         expressao();
-        printf("ARMZ %d,%d", simbolo->escopo, simbolo->endereco); // Imprime o ARMZ com o escopo e endereço desta variável
+        mepa_nn("ARMZ", simbolo->escopo, simbolo->endereco);  // Imprime o ARMZ com o escopo e endereço desta variável
     } else if (lookahead.atomo == ABRE_PAR) {
         consome(ABRE_PAR);
         if (lookahead.atomo != FECHA_PAR) {
@@ -398,22 +410,28 @@ void comando_atribuicao() {
     }
 }
 
-void comando_entrada() {
+// Função auxiliar para impressão do LEIT e do ARMZ para não ficar tão confuso
+// Essa função também verifica sintática e semântica, caso a variável não tenha sido declarada
+// Eu adicionei essa função para deixar o LEIT e o ARMZ juntos e facilitar a leitura
+void leitura_variavel(){
+    if (lookahead.atomo != IDENT) consome(IDENT);   // gera o erro sintático
     TNo* simbolo = buscar_simbolo(lookahead.atributo.id);
 
     if (simbolo == NULL) {
         erro_semantico("Identificador não foi declarado", lookahead.atributo.id);
     }
+    mepa("LEIT"); // Chama o LEIT (Leitura) no MEPA
+    mepa_nn("ARMZ", simbolo->escopo, simbolo->endereco);  // Para a variável declarada que recebe o valor do LEIT
+    consome(IDENT);
+}
 
+void comando_entrada() {
     consome(LEIA);
     consome(ABRE_PAR);
-    mepa("LEIT"); // Chama o LEIT (Leitura) no MEPA
-    printf("ARMZ %d,%d", simbolo->escopo, simbolo->endereco); // Para a variável declarada que recebe o valor do LEIT
-    consome(IDENT);
+    leitura_variavel();
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
-        mepa("LEIT");
-        consome(IDENT);
+        leitura_variavel();
     }
     consome(FECHA_PAR);
 }
@@ -526,8 +544,13 @@ void expressao_simples() {
             mepa("SOMA");
         } else if (op == MENOS) {
             mepa("SUBT");
+        } else if (op == MOD) {
+            mepa("MOD");
+        } else if (op == OU) {
+            mepa("DISJ");
         }
         // Tem o MOD e o OU que eu não sei como fica no MEPA, então deixei de fora
+        // 22/11 Implementei o MOD (mod) e o DISJ (OU)
     }
 }
 
@@ -551,8 +574,11 @@ void termo() {
             mepa("MULT");
         } else if (op == DIV) {
             mepa("DIVI");
+        } else if (op == E) {
+            mepa("CONJ");
         }
         // Aqui também, tem o E que eu não sei como fica no MEPA, deixei de fora
+        // 22/11 Implementei o CONJ (E)
     }
 }
 
@@ -577,10 +603,10 @@ void fator() {
             consome(FECHA_PAR);
         } else {
             // Se não for nenhum dos dois, é variável
-            printf("CRVL %d,%d", simbolo->escopo, simbolo->endereco);
+            mepa_nn("CRVL", simbolo->escopo, simbolo->endereco);   // fator
         }
     } else if (lookahead.atomo == CONSTINT) {
-        AMEM("CRCT", lookahead.atributo.numero); // Chama o CRCT no MEPA
+        mepa_n("CRCT", lookahead.atributo.numero); // Chama o CRCT no MEPA
         consome(CONSTINT);
     } else if (lookahead.atomo == CONSTCHAR) {
         // Não sei se tem constCHAR no mepa então também não coloquei
@@ -590,6 +616,16 @@ void fator() {
         expressao();
         consome(FECHA_PAR);
     } else if (lookahead.atomo == MAIS || lookahead.atomo == MENOS || lookahead.atomo == NAO) {
+        TAtomo op = lookahead.atomo; // Pega o operador unário para implementar no MEPA
+        consome(op);
+        fator();
+        if (op == MENOS) mepa("INVR"); // Inverte o sinal
+        else if (op == NAO) mepa("NEGA"); // Negação
+        else if (lookahead.atomo == VERDADEIRO) mepa_n("CRCT", 1); // Chama o CRCT no MEPA para verdadeiro
+        else if (lookahead.atomo == FALSO) mepa_n("CRCT", 0); // Chama o CRCT no MEPA para falso
+    
+        // Nos slides do professor tem um Teste := 'f' mas eu não vou implementar para CONSTCHAR
+
         if (lookahead.atomo == MAIS) consome(MAIS);
         else if (lookahead.atomo == MENOS) consome(MENOS);
         else consome(NAO);
@@ -615,13 +651,11 @@ void iniciar_sintatico(FILE *arq) {
     }
 
     lookahead = obter_proximo_token();
-    void inicializa_tabela();
+    inicializa_tabela();
 
     programa();
 
-    if (lookahead.atomo == EOS) {
-        printf("%d linhas analisadas, programa sintaticamente correto\n", linha);
-    } else {
+    if (lookahead.atomo != EOS) {
         printf("# %d:erro sintatico, conteudo extra apos o fim do programa [%s]\n", lookahead.linha, nome_atomo(lookahead.atomo));
     }
     imprimir_tabela();
@@ -640,10 +674,19 @@ void mepa(const char *op) {
     printf("    %s\n", op);
 }
 
-void AMEM(const char *op, int n) {
+void mepa_n(const char *op, int n) {
     // AMEM (declaração de variáveis globais)
     printf("    %s %d\n", op, n);
     // O DMEM também funciona aqui, foi alterado na função bloco()
+    // O CRCT também funciona aqui, foi alterado na função fator()
+}
+
+void mepa_nn(const char *op, int n, int d) {
+    // Essa imprime o ARMZ (armazenamento de variáveis) e o CRVL (carrega variável)
+    // O CRVL também funciona aqui
+    // A diferença dessa pras outras é a qtd de parâmetros na impressão
+    // Enquanto o mepa() imprime só o operador, o mepa_n() imprime o operador e um parâmetro, e o mepa_nn() imprime o operador e dois parâmetros
+    printf("    %s %d,%d\n", op, n, d);
 }
 
 int rotulos() {
@@ -665,9 +708,8 @@ void LN_NADA(int rot) {
 }
 
 // TODO: Continuar a implementação do MEPA (falta bastante coisa ainda)
-// Para o exemplo que eu estou usando (teste 6) falta: 
-// CRVL; CRCT; DSVS; MULT; ARMZ;
-// Também falta os L1; L2, etc
+// Para o MEPA completo falta:
+// CHPR; RTPR; ENPR; CREN; CRVI e ARMI
 
 
 /*
@@ -683,4 +725,12 @@ void erro_semantico(char *motivo, char *id) {
     printf("# %d:erro semantico: %s, %s\n", lookahead.linha, motivo, id);
     liberar_tabela();
     exit(1);
+}
+
+// Erro se o nome já foi declarado no MESMO escopo
+void verifica_duplicado(char *nome) {
+    TNo *s = buscar_simbolo(nome);
+    if (s != NULL && s->escopo == escopo_atual) {
+        erro_semantico("Identificador ja declarado", nome);
+    }
 }
