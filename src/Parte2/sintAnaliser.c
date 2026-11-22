@@ -17,19 +17,21 @@ extern int linha;
 
 TInfoAtomo lookahead;
 
-// Variável global de validador do MEPA
-int gerador_MEPA = 0; // Apenas validador do mepa, quando é chamado ele valida como 1
-
 
 int contador_L = 0; // Contador do MEPA para as chamadas de funções e desvios
 // L1: NADA, DSVS L2 e DSVF L3 por exemplo
+int escopo_atual = 0; // Escopo inicial é dado como global e, caso necessário, troca para local
+int deslocamento_atual = 0; // O endereço de cada variável
+TTipo tipo_atual = T_NAO_DEFINIDO; // Tipo global que sempre que se altera ao passar por tipo()
+TCategoria categoria_atual = S_VARIAVEL; // Categoria global que se altera de acordo com necessidade
 
-// protótipos de Funções para o MEPA
+// protótipos de Funções para o MEPA e Semantico
 void mepa(const char *op);
 void AMEM(const char *op, int n);
 int rotulos();
 void desvia(const char *op, int rot);
 void LN_NADA(int rot);
+void erro_semantico(char *motivo, char *ID);
 
 // Protótipos das regras da gramática
 void consome(TAtomo atomo_esperado);
@@ -234,6 +236,7 @@ void bloco() {
 }
 
 int declaracao_variaveis() {
+    categoria_atual = S_VARIAVEL;
     int total_var = 0;
     if (lookahead.atomo == VAR) {
         consome(VAR);
@@ -251,9 +254,14 @@ int lista_variaveis() {
     // Soma das variáveis para o MEPA
     int n = 1;
 
+    // Feito dentro de lista_variaveis pois é aqui que pega cada uma das variáveis e salva seus IDs
+    inserir_tabela(lookahead.atributo.id, deslocamento_atual, categoria_atual, tipo_atual, escopo_atual);
+    deslocamento_atual += 1;
     consome(IDENT);
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
+        inserir_tabela(lookahead.atributo.id, deslocamento_atual, categoria_atual, tipo_atual, escopo_atual); // Justamente para pegar CADA variável e salvar na tabela
+        deslocamento_atual += 1;
         consome(IDENT);
         // n++ realiza a soma
         n++;
@@ -276,7 +284,12 @@ void declaracao_rotinas() {
 void declaracao_funcao() {
     consome(FUNCAO);
     tipo();
+    // Ideia é que para função, o endereço armazene o endereço do rótulo
+    int rotulo_funcao = rotulos();
+    categoria_atual = S_FUNCAO;
+    inserir_tabela(lookahead.atributo.id, rotulo_funcao, categoria_atual, tipo_atual, escopo_atual);
     consome(IDENT);
+    escopo_atual = 1;
     parametros_formais();
     declaracao_variaveis();
     comando_composto();
@@ -284,16 +297,29 @@ void declaracao_funcao() {
 
 void declaracao_procedimento() {
     consome(PROCEDIMENTO);
+    // Ideia é que para procedimento, o endereço armazene o endereço do rótulo
+    int rotulo_procedimento = rotulos();
+    categoria_atual = S_PROCEDIMENTO;
+    inserir_tabela(lookahead.atributo.id, rotulo_procedimento, S_PROCEDIMENTO, tipo_atual, escopo_atual);
     consome(IDENT);
+    escopo_atual = 1;
     parametros_formais();
     declaracao_variaveis();
     comando_composto();
 }
 
 void tipo() {
-    if (lookahead.atomo == CARACTERE) consome(CARACTERE);
-    else if (lookahead.atomo == INTEIRO) consome(INTEIRO);
-    else if (lookahead.atomo == LOGICO) consome(LOGICO);
+    if (lookahead.atomo == CARACTERE) {
+        consome(CARACTERE);
+        tipo_atual = T_CARACTERE;
+    } else if (lookahead.atomo == INTEIRO) {
+        consome(INTEIRO);
+        tipo_atual = T_INTEIRO; 
+    }
+    else if (lookahead.atomo == LOGICO) {
+        consome(LOGICO);
+        tipo_atual = T_LOGICO;
+    } 
     else {
         printf("# %d:erro sintatico, esperado [tipo] encontrado [%s]\n", // Mensagem de Erro Sintático de Tipo
                lookahead.linha, nome_atomo(lookahead.atomo));
@@ -314,6 +340,7 @@ void parametros_formais() {
 }
 
 void parametro_formal() {
+    categoria_atual = S_PARAMETRO;
     if (lookahead.atomo == VAR) {
         consome(VAR);
     }
@@ -352,10 +379,16 @@ void comando() {
 }
 
 void comando_atribuicao() {
-    consome(IDENT);
+    TNo *simbolo = buscar_simbolo(lookahead.atributo.id); // Pega o nó com base no ID
+    if (simbolo == NULL) {
+        erro_semantico("Identificador não foi declarado", lookahead.atributo.id);
+    }
+
+    consome(IDENT); // ID
     if (lookahead.atomo == ATRIB) {
         consome(ATRIB);
         expressao();
+        printf("ARMZ %d,%d", simbolo->escopo, simbolo->endereco); // Imprime o ARMZ com o escopo e endereço desta variável
     } else if (lookahead.atomo == ABRE_PAR) {
         consome(ABRE_PAR);
         if (lookahead.atomo != FECHA_PAR) {
@@ -366,9 +399,16 @@ void comando_atribuicao() {
 }
 
 void comando_entrada() {
+    TNo* simbolo = buscar_simbolo(lookahead.atributo.id);
+
+    if (simbolo == NULL) {
+        erro_semantico("Identificador não foi declarado", lookahead.atributo.id);
+    }
+
     consome(LEIA);
     consome(ABRE_PAR);
     mepa("LEIT"); // Chama o LEIT (Leitura) no MEPA
+    printf("ARMZ %d,%d", simbolo->escopo, simbolo->endereco); // Para a variável declarada que recebe o valor do LEIT
     consome(IDENT);
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
@@ -455,11 +495,11 @@ void expressao() {
             } else if (op == MENOR) {
                 mepa("CMME");
             } else if (op == MENOR_IGUAL) {
-                mepa("CMMA");
+                mepa("CMEG");
             } else if (op == MAIOR) {
                 mepa("CMMA");
             } else if (op == MAIOR_IGUAL) {
-                mepa("CMME");
+                mepa("CMAG");
             } else if (op == DIFERENTE) {
                 mepa("CMDG");
             }
@@ -524,11 +564,20 @@ void operador_multiplicacao() {
 
 void fator() {
     if (lookahead.atomo == IDENT) {
+        // Busca simbolo após comprovar que é um identificador
+        TNo* simbolo = buscar_simbolo(lookahead.atributo.id);
+        if (simbolo == NULL) {
+            erro_semantico("Identificador não declarado", lookahead.atributo.id);
+        }
         consome(IDENT);
+        // Caso seja parênteses, é ou chamada de função ou procedimento
         if (lookahead.atomo == ABRE_PAR) {
             consome(ABRE_PAR);
             lista_expressao();
             consome(FECHA_PAR);
+        } else {
+            // Se não for nenhum dos dois, é variável
+            printf("CRVL %d,%d", simbolo->escopo, simbolo->endereco);
         }
     } else if (lookahead.atomo == CONSTINT) {
         AMEM("CRCT", lookahead.atributo.numero); // Chama o CRCT no MEPA
@@ -566,45 +615,17 @@ void iniciar_sintatico(FILE *arq) {
     }
 
     lookahead = obter_proximo_token();
+    void inicializa_tabela();
 
     programa();
 
     if (lookahead.atomo == EOS) {
         printf("%d linhas analisadas, programa sintaticamente correto\n", linha);
     } else {
-        printf("# %d:erro sintatico, conteudo extra apos o fim do programa [%s]\n", 
-               lookahead.linha, nome_atomo(lookahead.atomo));
+        printf("# %d:erro sintatico, conteudo extra apos o fim do programa [%s]\n", lookahead.linha, nome_atomo(lookahead.atomo));
     }
-}
-
-/*
-
-=====================================================================================
-
-                    GERAÇÃO DE CÓDIGO MEPA
-
-=====================================================================================
-
-
-*/
-
-// Para a impressão da MEPA, vou manter os prints porém vou comentá-los, para manter a coesão com o código anterior
-// Aqui eu só copiei o iniciar_sintático, ou seja, ele relê o arquivo inteiro para montar o MEPA, por isso do rewind
-void iniciar_MEPA(FILE *arq){
-    // rewind(arq); Falamos com o professor, não precisa disso mas vou deixar só comentado
-    arquivo_fonte = arq;
-    linha = 1; // Força a contagem a iniciar na linha 1
-
-    if (fgets(buffer_linha, sizeof(buffer_linha), arquivo_fonte) != NULL) {
-        iniciar_lexico(buffer_linha, linha);
-    }
-
-    lookahead = obter_proximo_token();
-
-    gerador_MEPA = 1; // Desbloqueia o uso do MEPA no sintático (PROVAVELMENTE VAI SER REMOVIDO (comentado))
-    contador_L = 0; // Inicializa o contador do mepa novamente para os desvios (L1, L2, L3...)
-
-    programa();
+    imprimir_tabela();
+    liberar_tabela();
 }
 
 // O LEIT e o DMEM já fazem parte de outras funções
@@ -616,12 +637,12 @@ void mepa(const char *op) {
     // Inicializador do MEPA (INPP e PARA)
     // Os espaços na tela são para dar aqueles mesmos espaços que o professor tem nos exemplos dele
     // para deixar mais bonitinho e organizado.
-    if (gerador_MEPA) printf("    %s\n", op);
+    printf("    %s\n", op);
 }
 
 void AMEM(const char *op, int n) {
     // AMEM (declaração de variáveis globais)
-    if (gerador_MEPA) printf("    %s %d\n", op, n);
+    printf("    %s %d\n", op, n);
     // O DMEM também funciona aqui, foi alterado na função bloco()
 }
 
@@ -635,12 +656,12 @@ int rotulos() {
 // Rótulo Lx para a função no MEPA
 // Aqui imprime o rótulo com base no parâmetro rot recebido
 void desvia(const char *op, int rot) {
-    if (gerador_MEPA) printf("    %s L%d\n", op, rot);
+    printf("    %s L%d\n", op, rot);
 }
 
 // Rótulo Ln:NADA para as funções no MEPA
 void LN_NADA(int rot) {
-    if (gerador_MEPA) printf("L%d:NADA\n", rot);
+    printf("L%d:NADA\n", rot);
 }
 
 // TODO: Continuar a implementação do MEPA (falta bastante coisa ainda)
@@ -657,8 +678,9 @@ void LN_NADA(int rot) {
 
 =====================================================================================
 
-
 */
-
-
-// TODO: Começar a implementação do Analisador Semântico
+void erro_semantico(char *motivo, char *id) {
+    printf("# %d:erro semantico: %s, %s\n", lookahead.linha, motivo, id);
+    liberar_tabela();
+    exit(1);
+}

@@ -26,11 +26,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Chama a função no Sintatico
-    // iniciar_sintatico(arquivo_fonte);
-    // Removido depois de falar com o professor
-
-    // Chama a função do MEPA
-    iniciar_MEPA(arquivo_fonte);
+    iniciar_sintatico(arquivo_fonte);
 
     fclose(arquivo_fonte);
     return 0;

@@ -8,7 +8,7 @@ TTabelaSimbolos tabela; // Tabela global
 int hashMack(char *s);
 
 // Inicio da nossa implementação:
-void inserir_tabela(char *s, TCategoria categoria, TTipo tipo, int escopo) {
+void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int escopo) {
     int valor_hash = 0;
     
     // Iniciando como um ponteiro para poder, ao criar uma lista, apontar para outro nó
@@ -36,16 +36,16 @@ void inserir_tabela(char *s, TCategoria categoria, TTipo tipo, int escopo) {
         // lá era usado para reescrever o lexema analisado enquanto aqui é para inserir em ID)
         strncpy(no->ID, s, tamanho_ID);
         no->ID[tamanho_ID] = '\0';
-        no->endereco = valor_hash;
         no->categoria = categoria;
+        no->endereco = endereco;
         no->tipo = tipo;
         no->escopo = escopo;
     } else {
         // Se não, já insere direto nesse endereço
         strncpy(no->ID, s, tamanho_ID);
         no->ID[tamanho_ID] = '\0';
-        no->endereco = valor_hash;
         no->categoria = categoria;
+        no->endereco = endereco;
         no->tipo = tipo;
         no->escopo = escopo;
     }
@@ -102,5 +102,71 @@ void liberar_tabela() {
             no = proximo; // Prossegue para próximo nó
         }
         tabela.entradas[i] = NULL; // Após limpar a lista na posição da tabela, atribui null
+    }
+}
+
+void imprimir_tabela() {
+    TNo *no;
+
+    for (int i = 0; i < PRIME_NUMBER; i++) {
+        no = tabela.entradas[i];
+        printf("Entrada na tabela hash: %d\n\n", i);
+        while (no != NULL) {
+            printf("ID: %s\n", no->ID);
+            printf("Endereço: %d\n", no->endereco);
+            printf("Categoria: %s\n", imprimir_categoria(no->categoria));
+            printf("Tipo: %s\n", imprimir_tipo(no->tipo));
+            printf("Escopo: %s\n", imprimir_escopo(no->escopo));
+            no = no->prox;
+        }
+    }
+}
+
+// FUNÇÕES APENAS PARA ESCREVER NA HORA DE IMPRIMIR A TABELA
+char *imprimir_categoria(TCategoria categoria) {
+    switch (categoria) {
+        case S_VARIAVEL: return "Variavel";
+        case S_FUNCAO: return "Funcao";
+        case S_PARAMETRO: return "Parametro";
+        case S_PROCEDIMENTO: return "Procedimento";
+        default: return "Desconhecida";
+    }
+}
+
+char *imprimir_tipo(TTipo tipo) {
+    switch (tipo) {
+        case T_INTEIRO: return "Inteiro";
+        case T_LOGICO: return "Lógico";
+        case T_CARACTERE: return "Caractere";
+        default: return "Desconhecido";
+    }
+}
+
+char *imprimir_escopo(int escopo) {
+    if (escopo == 1) {
+        return "Local";
+    } else {
+        return "Global";
+    }
+}
+
+/*
+Função criada apenas para inserir o tipo já que no analisador sintático o tem separado o função, variável, procedimento
+mas para tipo é unificado em uma função.
+*/ 
+void atualizar_no_tipo(char *s, TTipo tipo) {
+    TNo *no;
+
+    for (int i = 0; i < PRIME_NUMBER; i++) {
+        no = tabela.entradas[i];
+        
+        while (no != NULL) {
+            if (strcmp(no->ID, s) == 0) {
+                no->tipo = tipo;
+                return; // Sai da função no momento em que encontra o tipo e atualiza
+            } else {
+                no = no->prox;
+            }
+        }
     }
 }

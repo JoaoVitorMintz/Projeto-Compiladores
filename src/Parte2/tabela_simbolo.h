@@ -5,14 +5,14 @@
 #define PRIME_NUMBER 211  // numero primo para reduzir colisoes  
 
 // Semelhante ao que foi feito para o Analisador Léxico
-typedef enum {
+typedef enum { // S de simbolo
    S_VARIAVEL,
    S_PARAMETRO,
    S_FUNCAO,
    S_PROCEDIMENTO
 } TCategoria;
 
-typedef enum {
+typedef enum { // T de tipo
    T_INTEIRO,
    T_CARACTERE,
    T_LOGICO,
@@ -24,8 +24,8 @@ typedef struct _TNo{
    int endereco;
    TCategoria categoria;
    TTipo tipo;
-   int escopo; // 1 para global e 0 para local
- 
+   int escopo; // 0 é global enquanto 1 é local
+   int num_parametros;
    struct _TNo *prox; 
 } TNo;
 
@@ -33,9 +33,11 @@ typedef struct {
     TNo *entradas[PRIME_NUMBER]; 
 } TTabelaSimbolos;
 
-void inserir_tabela(char *s, TCategoria categoria, TTipo tipo, int escopo);
+void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int escopo);
 void inicializa_tabela();
 void liberar_tabela();
 TNo* buscar_simbolo(char *s);
+void imprimir_tabela();
+void atualizar_no_tipo(char *s, TTipo tipo);
 
 #endif
