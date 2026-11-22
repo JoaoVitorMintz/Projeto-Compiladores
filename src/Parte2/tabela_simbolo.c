@@ -1,4 +1,5 @@
 // Tabela de simbolos desenvolvida pelos alunos
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "tabela_simbolo.h"
@@ -27,9 +28,16 @@ void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int
     if (tabela.entradas[valor_hash] != NULL) {
 
         // Enquanto o valor no endereço 'valor_hash' estiver preenchido, passar de nó em nó até achar onde inserir novo valor
-        while (no->prox != 0) {
+        while (no->prox != NULL) {
             no = no->prox;
         }
+
+        // Cria um novo nó para inserir no final da lista
+        // O erro de Segmentation fault tava dando aqui pq ele tentava alocar em um nó que não existia
+        TNo *novoNo = (TNo*)malloc(sizeof(TNo));
+        no -> prox = novoNo;
+        no = novoNo;
+
 
         // Como ID de TNo é um array, não pode receber direto s porque s é um ponteiro para array de char, portanto,
         // é necessário que copiemos esse ponteiro para ser inserido no ID semelhantemente realizado no léxico (entretanto,
@@ -41,6 +49,10 @@ void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int
         no->tipo = tipo;
         no->escopo = escopo;
     } else {
+        // aloca o primeiro nó e faz ele ser a cabeça da lista
+        no = (TNo*)malloc(sizeof(TNo));
+        tabela.entradas[valor_hash] = no;
+
         // Se não, já insere direto nesse endereço
         strncpy(no->ID, s, tamanho_ID);
         no->ID[tamanho_ID] = '\0';
@@ -51,7 +63,7 @@ void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int
     }
     
     // Após preencher o nó de determinada posição da tabela, ele pega e cria um novo nó para começar inserir caso outro
-    // valor caia nessa posição:
+    // valor caia nessa posição
     TNo *novoNo = (TNo*)malloc(sizeof(TNo));
     no->prox = novoNo;
 
