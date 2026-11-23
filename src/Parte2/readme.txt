@@ -19,3 +19,11 @@ da tabela de simbolos com o analisado sintatico para acessar e alterar no direta
 Outra decisão foi que quando é analisado a lista de parâmetros,  armazenamos sua sequência, o i da fórmula, 
 em num_parametros para quando o parâmetro for acessado, por isso já saberemos a quantidade n de parametros, calcularmos o 
 deslocamento pela fórmula -(n+3-i) para gerar o CRVL ou ARMZ corretamente
+
+Para a implementação do Semântico, tivemos muita dificuldade em implementar alguns tópicos: 
+  1. Tipo incorreto de parâmetro (iniciamos a implementação porém não conseguimos implementar no final)
+
+Acreditamos que esse seja o único problema do semântico
+P.S. No link de referência colocado ao final do código, ele diz que o uso de palavras reservadas é um erro semântico, porém
+mantivemos a implementação anterior e a declaração de erro como sintática
+link de referência para o semântico: https://www.geeksforgeeks.org/compiler-design/semantic-analysis-in-compiler-design/
