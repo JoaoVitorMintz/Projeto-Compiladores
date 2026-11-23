@@ -1,0 +1,14 @@
+algoritmo funcao1;
+    funcao inteiro maior(x, y : inteiro)
+        var m : inteiro;
+    inicio
+        se x > y entao
+            m := x
+        senao
+            m := y;
+
+        maior := m
+    fim
+inicio
+    escreva(maior(4, 3))
+fim.

@@ -1,0 +1,7 @@
+algoritmo teste_duplicado;
+    var x : inteiro;
+        x : inteiro;
+inicio
+    x := 10;
+    escreva(x)
+fim.

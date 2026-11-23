@@ -1,0 +1,14 @@
+algoritmo teste_retorno;
+    var resultado : inteiro;
+
+    funcao inteiro calcular(a, b, c : inteiro)
+        var soma : inteiro;
+    inicio
+        soma := a + b + c;
+        calcular := soma
+    fim
+inicio
+    resultado := calcular(10, 20, 30);
+    escreva(resultado);
+    escreva(calcular(1, 2, 3) + 100)
+fim.
