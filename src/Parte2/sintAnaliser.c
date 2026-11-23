@@ -517,6 +517,7 @@ void comando_atribuicao() {
             // Se for um parâmetro, corrige aqui o endereço
             if (simbolo->categoria == S_PARAMETRO) {
                 endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
+                simbolo->endereco = endereco;
             }
             // se não, só imprime direto
             mepa_nn("ARMZ", simbolo->escopo, endereco);
@@ -560,6 +561,7 @@ void leitura_variavel(){
 
     if (simbolo->categoria == S_PARAMETRO) {
         endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
+        simbolo->endereco = endereco;
     }
     mepa("LEIT"); // Chama o LEIT (Leitura) no MEPA
     mepa_nn("ARMZ", simbolo->escopo, endereco);  // Para a variável declarada que recebe o valor do LEIT
@@ -774,6 +776,7 @@ void fator() {
 
             if (simbolo->categoria == S_PARAMETRO) {
                 int endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
+                simbolo->endereco = endereco;
                 mepa_nn("CRVL", 1, endereco);
             } else { // É variável
                 mepa_nn("CRVL", simbolo->escopo, simbolo->endereco);   // fator
