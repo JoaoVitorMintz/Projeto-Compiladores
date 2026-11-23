@@ -6,7 +6,6 @@ Como rodar:
 
 ./compilador <nome_do_arquivo>.txt
 ou
-ou
 valgrind --leak-check=yes ./compilador <nome_do_arquivo>.txt
 
 O segundo é para validar erro de acesso à memória que em nossos testes, deu 0
