@@ -1,4 +1,9 @@
-// Tabela de simbolos desenvolvida pelos alunos
+/*
+Alunos:
+João Vitor Garcia Aguiar Mintz 10440421
+Giovanni Barreiro G. de Castro 10435745
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +14,7 @@ TTabelaSimbolos tabela; // Tabela global
 int hashMack(char *s);
 
 // Inicio da nossa implementação:
-void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int escopo) {
+void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int escopo, int num_parametros) {
     int valor_hash = 0;
     
     // Iniciando como um ponteiro para poder, ao criar uma lista, apontar para outro nó
@@ -35,7 +40,7 @@ void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int
         // Cria um novo nó para inserir no final da lista
         // O erro de Segmentation fault tava dando aqui pq ele tentava alocar em um nó que não existia
         TNo *novoNo = (TNo*)malloc(sizeof(TNo));
-        no -> prox = novoNo;
+        no->prox = NULL;
         no = novoNo;
 
 
@@ -47,6 +52,7 @@ void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int
         no->categoria = categoria;
         no->endereco = endereco;
         no->tipo = tipo;
+        no->num_parametros = num_parametros;
         no->escopo = escopo;
     } else {
         // aloca o primeiro nó e faz ele ser a cabeça da lista
@@ -59,13 +65,12 @@ void inserir_tabela(char *s, int endereco, TCategoria categoria, TTipo tipo, int
         no->categoria = categoria;
         no->endereco = endereco;
         no->tipo = tipo;
+        no->num_parametros = num_parametros;
         no->escopo = escopo;
     }
     
-    // Após preencher o nó de determinada posição da tabela, ele pega e cria um novo nó para começar inserir caso outro
-    // valor caia nessa posição
-    TNo *novoNo = (TNo*)malloc(sizeof(TNo));
-    no->prox = novoNo;
+    // Após preencher o nó de determinada posição da tabela, ele coloca o próximo como NULL
+    no->prox = NULL;
 
     tabela.entradas[valor_hash] = no;
 }
@@ -122,14 +127,18 @@ void imprimir_tabela() {
 
     for (int i = 0; i < PRIME_NUMBER; i++) {
         no = tabela.entradas[i];
-        printf("Entrada na tabela hash: %d\n\n", i);
-        while (no != NULL) {
-            printf("ID: %s\n", no->ID);
-            printf("Endereço: %d\n", no->endereco);
-            printf("Categoria: %s\n", imprimir_categoria(no->categoria));
-            printf("Tipo: %s\n", imprimir_tipo(no->tipo));
-            printf("Escopo: %s\n", imprimir_escopo(no->escopo));
-            no = no->prox;
+        if (no == NULL) {
+            continue;
+        } else {
+            printf("Entrada na tabela hash: %d\n\n", i);
+            while (no != NULL) {
+                printf("ID: %s\n", no->ID);
+                printf("Endereço: %d\n", no->endereco);
+                printf("Categoria: %s\n", imprimir_categoria(no->categoria));
+                printf("Tipo: %s\n", imprimir_tipo(no->tipo));
+                printf("Escopo: %s\n", imprimir_escopo(no->escopo));
+                no = no->prox;
+            }
         }
     }
 }
@@ -162,23 +171,12 @@ char *imprimir_escopo(int escopo) {
     }
 }
 
-/*
-Função criada apenas para inserir o tipo já que no analisador sintático o tem separado o função, variável, procedimento
-mas para tipo é unificado em uma função.
-*/ 
-void atualizar_no_tipo(char *s, TTipo tipo) {
-    TNo *no;
+// Fórmula do cálculo de endereço de parâmetro: -(n+3-i) sendo n = qtd_parametros e i = qual_parametro
+int altera_endereco_parametro(int qtd_parametros, int parametro_atual) {
+    return -((qtd_parametros + 3) -parametro_atual);
+}
 
-    for (int i = 0; i < PRIME_NUMBER; i++) {
-        no = tabela.entradas[i];
-        
-        while (no != NULL) {
-            if (strcmp(no->ID, s) == 0) {
-                no->tipo = tipo;
-                return; // Sai da função no momento em que encontra o tipo e atualiza
-            } else {
-                no = no->prox;
-            }
-        }
-    }
+// Fórmula do cálculo de endereço para retorno no D[1]: -(n+3) sendo n o número de variáveis de retorno (igual parâmetro)
+int altera_endereco_retorno(int qtd_retorno) {
+    return -(qtd_retorno + 3);
 }

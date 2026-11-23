@@ -20,9 +20,11 @@ TInfoAtomo lookahead;
 int contador_L = 0; // Contador do MEPA para as chamadas de funções e desvios
 // L1: NADA, DSVS L2 e DSVF L3 por exemplo
 int escopo_atual = 0; // Escopo inicial é dado como global e, caso necessário, troca para local
-int deslocamento_atual = 0; // O endereço de cada variável
+int endereco_local = 0; // O endereço de cada variável
+int endereco_global = 0;
 TTipo tipo_atual = T_NAO_DEFINIDO; // Tipo global que sempre que se altera ao passar por tipo()
 TCategoria categoria_atual = S_VARIAVEL; // Categoria global que se altera de acordo com necessidade
+int total_parametros = 0;
 
 // protótipos de Funções para o MEPA e Semantico
 void mepa(const char *op);
@@ -31,7 +33,7 @@ void mepa_nn(const char *op, int n, int d);
 int rotulos();
 void desvia(const char *op, int rot);
 void LN_NADA(int rot);
-void erro_semantico(char *motivo, char *ID);
+void erro_semantico_generico(char *motivo, char *ID);
 void verifica_duplicado(char *nome);
 
 // Protótipos das regras da gramática
@@ -211,7 +213,7 @@ void bloco() {
     int num_var = declaracao_variaveis();
     if (num_var) {
         // Chama a função da declaração de variáveis globais
-        mepa_n("AMEM", num_var);
+        mepa_n("AMEM ", num_var);
     }
 
     int rotulo_Main = 0;
@@ -252,22 +254,45 @@ int declaracao_variaveis() {
 }
 
 int lista_variaveis() {
-    // Soma das variáveis para o MEPA
+    int ordem_parametro = 0; // Apenas para, na hora de realizar o cálculo do endereço de parâmetro, ver a sequência de entrada
+    // Para realizar posteriormente a correção do tipo caso necessário
     int n = 1;
-    TNo *inseridos[64]; // nós criados nesta lista, para acertar o tipo depois
+    TNo *inseridos[64]; // nós criados neste vetor, para acertar o tipo depois
 
     verifica_duplicado(lookahead.atributo.id);
     // Feito dentro de lista_variaveis pois é aqui que pega cada uma das variáveis e salva seus IDs
-    inserir_tabela(lookahead.atributo.id, deslocamento_atual, categoria_atual, tipo_atual, escopo_atual);
+    if (escopo_atual == 1) {
+        // Parâmetro entra como escopo local mas não alteram o valor do endereço local
+        if (categoria_atual == S_PARAMETRO) {
+            inserir_tabela(lookahead.atributo.id, endereco_local, categoria_atual, tipo_atual, escopo_atual, ordem_parametro);
+            ordem_parametro += 1;
+        } else {
+            inserir_tabela(lookahead.atributo.id, endereco_local, categoria_atual, tipo_atual, escopo_atual, 0);
+            endereco_local += 1;
+        }
+    } else {
+        // Verifica o escopo atual para incrementar o endereço global
+        inserir_tabela(lookahead.atributo.id, endereco_global, categoria_atual, tipo_atual, escopo_atual, 0);
+        endereco_global += 1;
+    }
     inseridos[0] = buscar_simbolo(lookahead.atributo.id);
-    deslocamento_atual += 1;
     consome(IDENT);
     while (lookahead.atomo == VIRGULA) {
         consome(VIRGULA);
         verifica_duplicado(lookahead.atributo.id); // verifica constante se é duplicado para verificação do semântico
-        inserir_tabela(lookahead.atributo.id, deslocamento_atual, categoria_atual, tipo_atual, escopo_atual); // Justamente para pegar CADA variável e salvar na tabela
+        if (escopo_atual == 1) {
+            // Parâmetro entra como escopo local mas não alteram o valor do endereço local
+            if (categoria_atual == S_PARAMETRO) {
+                inserir_tabela(lookahead.atributo.id, endereco_local, categoria_atual, tipo_atual, escopo_atual, ordem_parametro);
+            } else {
+                inserir_tabela(lookahead.atributo.id, endereco_local, categoria_atual, tipo_atual, escopo_atual, 0);
+                endereco_local += 1;
+            }
+        } else {
+            inserir_tabela(lookahead.atributo.id, endereco_global, categoria_atual, tipo_atual, escopo_atual, 0);
+            endereco_global += 1;
+        } // Justamente para pegar CADA variável e salvar na tabela
         inseridos[n] = buscar_simbolo(lookahead.atributo.id);
-        deslocamento_atual += 1;
         consome(IDENT);
         // n++ realiza a soma
         n++;
@@ -285,7 +310,7 @@ int lista_variaveis() {
 
 void declaracao_rotinas() {
     while (lookahead.atomo == FUNCAO || lookahead.atomo == PROCEDIMENTO) {
-        if (lookahead.atomo == FUNCAO) {
+        if (lookahead.atomo == FUNCAO) {      
             declaracao_funcao();
         } else {
             declaracao_procedimento();
@@ -294,30 +319,74 @@ void declaracao_rotinas() {
 }
 
 void declaracao_funcao() {
+    total_parametros = 0; // Reseta para caso haja mais de uma função/procedimento
     consome(FUNCAO);
-    tipo();
+    mepa("ENPR"); // Entra procedimento pois primeira coisa após rótulo
+
+    tipo(); // Tipo pois função retorna valores que devem ser analisados pelo semântico se o tipo bate com variável atribuída
     // Ideia é que para função, o endereço armazene o endereço do rótulo
     int rotulo_funcao = rotulos();
     categoria_atual = S_FUNCAO;
-    inserir_tabela(lookahead.atributo.id, rotulo_funcao, categoria_atual, tipo_atual, escopo_atual);
+    inserir_tabela(lookahead.atributo.id, rotulo_funcao, categoria_atual, tipo_atual, escopo_atual, 0); // 0 inicialmente, altera depois
+
+    TNo *simbolo = buscar_simbolo(lookahead.atributo.id);
+    if (simbolo == NULL) {
+        erro_semantico_generico("Identificador não foi declarado", lookahead.atributo.id);
+    }
+
     consome(IDENT);
-    escopo_atual = 1;
+    escopo_atual = 1; // Define escopo 1 já que deve talvez entrar de uma função ou procedimento (ideia de LOCK)
+
     parametros_formais();
-    declaracao_variaveis();
+    simbolo->num_parametros = total_parametros; // Passa para o simbolo o total de parâmetros
+
+    // Inserir em variáveis locais da função/procedimento
+    int variaveis_locais = declaracao_variaveis();
+    mepa_n("AMEM", variaveis_locais);
     comando_composto();
+
+    escopo_atual = 0; // Define escopo 0 já que deve talvez sair de uma função ou procedimento (ideia de UNLOCK)
+    mepa_n("DMEM", variaveis_locais);
+    if (total_parametros == 0) {
+        mepa("RTPR");
+    } else {
+        mepa_n("RTPR", total_parametros);
+    }
 }
 
 void declaracao_procedimento() {
+    total_parametros = 0; // Reseta para caso haja mais de uma função/procedimento
     consome(PROCEDIMENTO);
+    mepa("ENPR"); // Entra procedimento pois primeira coisa após rótulo
+
     // Ideia é que para procedimento, o endereço armazene o endereço do rótulo
     int rotulo_procedimento = rotulos();
     categoria_atual = S_PROCEDIMENTO;
-    inserir_tabela(lookahead.atributo.id, rotulo_procedimento, S_PROCEDIMENTO, tipo_atual, escopo_atual);
+    inserir_tabela(lookahead.atributo.id, rotulo_procedimento, categoria_atual, tipo_atual, escopo_atual, 0); // Altera poucas linhas depois
+
+    TNo *simbolo = buscar_simbolo(lookahead.atributo.id);
+    if (simbolo == NULL) {
+        erro_semantico_generico("Identificador não foi declarado", lookahead.atributo.id);
+    }
+
     consome(IDENT);
-    escopo_atual = 1;
+    escopo_atual = 1; // Define escopo 1 já que deve talvez entrar de uma função ou procedimento (ideia de LOCK)
+
     parametros_formais();
-    declaracao_variaveis();
+    simbolo->num_parametros = total_parametros; // Passa para o simbolo o total de parâmetros
+
+    // Inserir em variáveis locais da função/procedimento
+    int variaveis_locais = declaracao_variaveis();
+    mepa_n("AMEM", variaveis_locais);
     comando_composto();
+
+    escopo_atual = 0; // Define escopo 0 já que deve talvez sair de uma função ou procedimento (ideia de UNLOCK)
+    mepa_n("DMEM", variaveis_locais);
+    if (total_parametros == 0) {
+        mepa("RTPR");
+    } else {
+        mepa_n("RTPR", total_parametros);
+    }
 }
 
 void tipo() {
@@ -342,10 +411,10 @@ void tipo() {
 void parametros_formais() {
     consome(ABRE_PAR);
     if (lookahead.atomo == VAR || lookahead.atomo == IDENT) {
-        parametro_formal();
+        parametro_formal();;
         while (lookahead.atomo == PONTO_VIRGULA) {
             consome(PONTO_VIRGULA);
-            parametro_formal();
+            parametro_formal(); 
         }
     }
     consome(FECHA_PAR);
@@ -356,7 +425,9 @@ void parametro_formal() {
     if (lookahead.atomo == VAR) {
         consome(VAR);
     }
-    lista_variaveis();
+    categoria_atual = S_PARAMETRO;
+    // Coleta o total de parâmetros
+    total_parametros += lista_variaveis();
 }
 
 void comando_composto() {
@@ -370,6 +441,7 @@ void comando_composto() {
 }
 
 void comando() {
+
     if (lookahead.atomo == LEIA) {
         comando_entrada();
     } else if (lookahead.atomo == ESCREVA) {
@@ -380,7 +452,7 @@ void comando() {
         comando_repeticao();
     } else if (lookahead.atomo == INICIO) {
         comando_composto();
-    } else if (lookahead.atomo == IDENT) {
+    } else if (lookahead.atomo == IDENT) { // Identificador, logo, variável ou função ou procedimento
         comando_atribuicao();
     } else {
         // Mensagem de Erro
@@ -393,20 +465,28 @@ void comando() {
 void comando_atribuicao() {
     TNo *simbolo = buscar_simbolo(lookahead.atributo.id); // Pega o nó com base no ID
     if (simbolo == NULL) {
-        erro_semantico("Identificador não foi declarado", lookahead.atributo.id);
+        erro_semantico_generico("Identificador não foi declarado", lookahead.atributo.id);
     }
 
     consome(IDENT); // ID
     if (lookahead.atomo == ATRIB) {
         consome(ATRIB);
-        expressao();
-        mepa_nn("ARMZ", simbolo->escopo, simbolo->endereco);  // Imprime o ARMZ com o escopo e endereço desta variável
+        expressao(); // Se for tipo a := (soma()) + b por exemplo:
+        if (simbolo->categoria == S_FUNCAO) {
+            // Caso seja uma função com retorno, ele printa o armazena com o endereço de retorno
+            mepa_nn("ARMZ", 1, altera_endereco_retorno(simbolo->num_parametros));
+        } else { // Se for só os simbolos mesmo a := b + c
+            // Senão, só imprime o armazena normal
+            mepa_nn("ARMZ", simbolo->escopo, simbolo->endereco);
+        }
     } else if (lookahead.atomo == ABRE_PAR) {
         consome(ABRE_PAR);
+
         if (lookahead.atomo != FECHA_PAR) {
             lista_expressao();
         }
         consome(FECHA_PAR);
+        desvia("CHPR", simbolo->endereco);
     }
 }
 
@@ -418,7 +498,7 @@ void leitura_variavel(){
     TNo* simbolo = buscar_simbolo(lookahead.atributo.id);
 
     if (simbolo == NULL) {
-        erro_semantico("Identificador não foi declarado", lookahead.atributo.id);
+        erro_semantico_generico("Identificador não foi declarado", lookahead.atributo.id);
     }
     mepa("LEIT"); // Chama o LEIT (Leitura) no MEPA
     mepa_nn("ARMZ", simbolo->escopo, simbolo->endereco);  // Para a variável declarada que recebe o valor do LEIT
@@ -508,7 +588,7 @@ void expressao() {
             operador_relacional();
             expressao_simples();
 
-            if(op == IGUAL) {
+            if (op == IGUAL) {
                 mepa("CMIG");
             } else if (op == MENOR) {
                 mepa("CMME");
@@ -588,19 +668,30 @@ void operador_multiplicacao() {
     else if (lookahead.atomo == E) consome(E);
 }
 
+// Para quando a chamada aparece dentro de uma expressão
 void fator() {
     if (lookahead.atomo == IDENT) {
         // Busca simbolo após comprovar que é um identificador
         TNo* simbolo = buscar_simbolo(lookahead.atributo.id);
         if (simbolo == NULL) {
-            erro_semantico("Identificador não declarado", lookahead.atributo.id);
+            erro_semantico_generico("Identificador não declarado", lookahead.atributo.id);
         }
+
+
         consome(IDENT);
-        // Caso seja parênteses, é ou chamada de função ou procedimento
+        // Caso seja parênteses, é ou chamada de FUNÇÃO ou PROCEDIMENTO dentro do fator
         if (lookahead.atomo == ABRE_PAR) {
             consome(ABRE_PAR);
+            // Se for função, realiza o AMEM (procedimento não retorna valor) para retorno do valor
+            if (simbolo->categoria == S_FUNCAO) {
+                mepa_n("AMEM", 1);
+            } else if (simbolo->categoria = S_PARAMETRO) { // Se for parâmetro, ele indica o endereço de retorno
+                simbolo->endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
+                mepa_nn("CRVL", 1, simbolo->endereco);
+            }
             lista_expressao();
             consome(FECHA_PAR);
+            desvia("CHPR", simbolo->endereco);
         } else {
             // Se não for nenhum dos dois, é variável
             mepa_nn("CRVL", simbolo->escopo, simbolo->endereco);   // fator
@@ -709,19 +800,19 @@ void LN_NADA(int rot) {
 
 // TODO: Continuar a implementação do MEPA (falta bastante coisa ainda)
 // Para o MEPA completo falta:
-// CHPR; RTPR; ENPR; CREN; CRVI e ARMI
+// CREN; CRVI e ARMI
 
 
 /*
 
 =====================================================================================
 
-                    ANALISADOR SEMÂNTICO
+        IMPLEMENTAÇÃO DE FUNÇÕES AUXÍLIARES DO ANALISADOR SEMÂNTICO
 
 =====================================================================================
 
 */
-void erro_semantico(char *motivo, char *id) {
+void erro_semantico_generico(char *motivo, char *id) {
     printf("# %d:erro semantico: %s, %s\n", lookahead.linha, motivo, id);
     liberar_tabela();
     exit(1);
@@ -731,6 +822,6 @@ void erro_semantico(char *motivo, char *id) {
 void verifica_duplicado(char *nome) {
     TNo *s = buscar_simbolo(nome);
     if (s != NULL && s->escopo == escopo_atual) {
-        erro_semantico("Identificador ja declarado", nome);
+        erro_semantico_generico("Identificador ja declarado", nome);
     }
 }
