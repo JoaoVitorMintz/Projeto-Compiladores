@@ -22,6 +22,8 @@ deslocamento pela fórmula -(n+3-i) para gerar o CRVL ou ARMZ corretamente
 
 Para a implementação do Semântico, tivemos muita dificuldade em implementar alguns tópicos: 
   1. Tipo incorreto de parâmetro (iniciamos a implementação porém não conseguimos implementar no final)
+      IMPORTANTE: Para essa implementação, deixamos os protótipos e variáveis globais, mas não foram implementadas
+      Variáveis globais (TTipo tipos_argumentos[100]; int indice_argumento = 0;
 
 Acreditamos que esse seja o único problema do semântico
 P.S. No link de referência colocado ao final do código, ele diz que o uso de palavras reservadas é um erro semântico, porém
