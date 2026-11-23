@@ -130,12 +130,14 @@ void imprimir_tabela() {
         if (no == NULL) {
             continue;
         } else {
-            printf("Entrada na tabela hash: %d\n\n", i);
+            printf("\nEntrada na tabela hash: %d\n", i);
             while (no != NULL) {
                 printf("ID: %s\n", no->ID);
                 printf("Endereço: %d\n", no->endereco);
                 printf("Categoria: %s\n", imprimir_categoria(no->categoria));
-                printf("Tipo: %s\n", imprimir_tipo(no->tipo));
+                if (no->categoria != S_PROCEDIMENTO) {
+                    printf("Tipo: %s\n", imprimir_tipo(no->tipo));
+                }
                 printf("Escopo: %s\n", imprimir_escopo(no->escopo));
                 no = no->prox;
             }

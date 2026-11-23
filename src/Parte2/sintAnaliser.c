@@ -191,6 +191,7 @@ void consome(TAtomo atomo_esperado) {
                lookahead.linha, 
                simbolo_atomo(atomo_esperado), 
                simbolo_atomo(lookahead.atomo));
+        liberar_tabela();
         exit(1);
     }
 }
@@ -254,7 +255,10 @@ int declaracao_variaveis() {
 }
 
 int lista_variaveis() {
-    int ordem_parametro = 1; // Apenas para, na hora de realizar o cálculo do endereço de parâmetro, ver a sequência de entrada
+    // Apenas para, na hora de realizar o cálculo do endereço de parâmetro, ver a sequência de entrada
+    // Se já houver parâmetros antes adicionados, ao invés dele reiniciar, mantém valor para cálculo
+    int ordem_parametro = total_parametros + 1;
+
     // Para realizar posteriormente a correção do tipo caso necessário
     int n = 1;
     TNo *inseridos[64]; // nós criados neste vetor, para acertar o tipo depois
@@ -420,6 +424,7 @@ void tipo() {
     else {
         printf("# %d:erro sintatico, esperado [tipo] encontrado [%s]\n", // Mensagem de Erro Sintático de Tipo
                lookahead.linha, nome_atomo(lookahead.atomo));
+        liberar_tabela();
         exit(1);
     }
 }
@@ -473,6 +478,8 @@ void comando() {
         // Mensagem de Erro
         printf("# %d:erro sintatico, esperado [comando] encontrado [%s]\n", 
                lookahead.linha, nome_atomo(lookahead.atomo));
+
+        liberar_tabela();
         exit(1);
     }
 }
@@ -491,8 +498,14 @@ void comando_atribuicao() {
             // Caso seja uma função com retorno, ele printa o armazena com o endereço de retorno
             mepa_nn("ARMZ", 1, altera_endereco_retorno(simbolo->num_parametros));
         } else { // Se for só os simbolos mesmo a := b + c
-            // Senão, só imprime o armazena normal
-            mepa_nn("ARMZ", simbolo->escopo, simbolo->endereco);
+            int endereco = simbolo->endereco;
+
+            // Se for um parâmetro, corrige aqui o endereço
+            if (simbolo->categoria == S_PARAMETRO) {
+                endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
+            }
+            // se não, só imprime direto
+            mepa_nn("ARMZ", simbolo->escopo, endereco);
         }
     } else if (lookahead.atomo == ABRE_PAR) {
         consome(ABRE_PAR);
@@ -515,8 +528,14 @@ void leitura_variavel(){
     if (simbolo == NULL) {
         erro_semantico_generico("Identificador não foi declarado", lookahead.atributo.id);
     }
+
+    int endereco = simbolo->endereco;
+
+    if (simbolo->categoria == S_PARAMETRO) {
+        endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
+    }
     mepa("LEIT"); // Chama o LEIT (Leitura) no MEPA
-    mepa_nn("ARMZ", simbolo->escopo, simbolo->endereco);  // Para a variável declarada que recebe o valor do LEIT
+    mepa_nn("ARMZ", simbolo->escopo, endereco);  // Para a variável declarada que recebe o valor do LEIT
     consome(IDENT);
 }
 
@@ -700,18 +719,17 @@ void fator() {
             // Se for função, realiza o AMEM (procedimento não retorna valor) para retorno do valor
             if (simbolo->categoria == S_FUNCAO) {
                 mepa_n("AMEM", 1);
-            } else if (simbolo->categoria == S_PARAMETRO) { // Se for parâmetro, ele indica o endereço de retorno
-                int endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
-                mepa_nn("CRVL", 1, endereco);
-            } else {
-                mepa_nn("CRVL", simbolo->escopo, simbolo->endereco);
             }
             lista_expressao();
             consome(FECHA_PAR);
             desvia("CHPR", simbolo->endereco);
-        } else {
-            // Se não for nenhum dos dois, é variável
-            mepa_nn("CRVL", simbolo->escopo, simbolo->endereco);   // fator
+        } else { // Se não for nenhum dos dois, é variável ou parâmetro
+            if (simbolo->categoria == S_PARAMETRO) {
+                int endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
+                mepa_nn("CRVL", 1, endereco);
+            } else { // É variável
+                mepa_nn("CRVL", simbolo->escopo, simbolo->endereco);   // fator
+            }
         }
     } else if (lookahead.atomo == CONSTINT) {
         mepa_n("CRCT", lookahead.atributo.numero); // Chama o CRCT no MEPA
@@ -745,6 +763,8 @@ void fator() {
     } else {
         printf("# %d:erro sintatico, esperado [fator] encontrado [%s]\n", 
                lookahead.linha, nome_atomo(lookahead.atomo));
+
+        liberar_tabela();
         exit(1);
     }
 }

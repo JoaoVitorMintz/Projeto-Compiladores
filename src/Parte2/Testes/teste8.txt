@@ -1,0 +1,18 @@
+algoritmo procedimento3;
+    var z : inteiro;
+    procedimento mult(x, y : inteiro)
+        var a : inteiro;
+    inicio
+        a := y;
+
+        se a > 0 entao
+        inicio
+            mult(x, y - 1);
+            z := z + x
+        fim
+    fim
+inicio
+    z := 0;
+    mult(4, 1);
+    escreva(z)
+fim.
