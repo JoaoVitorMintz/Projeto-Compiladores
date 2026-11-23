@@ -321,7 +321,10 @@ void declaracao_rotinas() {
 void declaracao_funcao() {
     total_parametros = 0; // Reseta para caso haja mais de uma função/procedimento
     consome(FUNCAO);
-    mepa("ENPR"); // Entra procedimento pois primeira coisa após rótulo
+    int rotulo_procedimento = rotulos();
+
+    LN_NADA(rotulo_procedimento);
+    mepa("ENPR");
 
     tipo(); // Tipo pois função retorna valores que devem ser analisados pelo semântico se o tipo bate com variável atribuída
     // Ideia é que para função, o endereço armazene o endereço do rótulo
@@ -342,11 +345,16 @@ void declaracao_funcao() {
 
     // Inserir em variáveis locais da função/procedimento
     int variaveis_locais = declaracao_variaveis();
-    mepa_n("AMEM", variaveis_locais);
+    if (variaveis_locais != 0) {
+        mepa_n("AMEM", variaveis_locais);
+    }
     comando_composto();
 
     escopo_atual = 0; // Define escopo 0 já que deve talvez sair de uma função ou procedimento (ideia de UNLOCK)
-    mepa_n("DMEM", variaveis_locais);
+    // Verificação para não printar um DMEM 0
+    if (variaveis_locais != 0) {
+        mepa_n("DMEM", variaveis_locais);
+    }
     if (total_parametros == 0) {
         mepa("RTPR");
     } else {
@@ -357,10 +365,12 @@ void declaracao_funcao() {
 void declaracao_procedimento() {
     total_parametros = 0; // Reseta para caso haja mais de uma função/procedimento
     consome(PROCEDIMENTO);
-    mepa("ENPR"); // Entra procedimento pois primeira coisa após rótulo
+    int rotulo_procedimento = rotulos();
+
+    LN_NADA(rotulo_procedimento);
+    mepa("ENPR");
 
     // Ideia é que para procedimento, o endereço armazene o endereço do rótulo
-    int rotulo_procedimento = rotulos();
     categoria_atual = S_PROCEDIMENTO;
     inserir_tabela(lookahead.atributo.id, rotulo_procedimento, categoria_atual, tipo_atual, escopo_atual, 0); // Altera poucas linhas depois
 
@@ -377,11 +387,17 @@ void declaracao_procedimento() {
 
     // Inserir em variáveis locais da função/procedimento
     int variaveis_locais = declaracao_variaveis();
-    mepa_n("AMEM", variaveis_locais);
+    // Verificação para não printar um AMEM 0
+    if (variaveis_locais != 0) {
+        mepa_n("AMEM", variaveis_locais);
+    }
     comando_composto();
 
     escopo_atual = 0; // Define escopo 0 já que deve talvez sair de uma função ou procedimento (ideia de UNLOCK)
-    mepa_n("DMEM", variaveis_locais);
+    // Verificação para não printar um DMEM 0
+    if (variaveis_locais != 0) {
+        mepa_n("DMEM", variaveis_locais);
+    }
     if (total_parametros == 0) {
         mepa("RTPR");
     } else {

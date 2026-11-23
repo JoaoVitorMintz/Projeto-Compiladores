@@ -1,9 +1,9 @@
 algoritmo procedimento1;
     var x, y, z : inteiro;
-procedimento mult()
-inicio
-    z := x * y
-fim
+    procedimento mult()
+    inicio
+        z := x * y
+    fim
 inicio
     leia(x, y);
     mult();
