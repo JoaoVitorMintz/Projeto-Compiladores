@@ -4,8 +4,6 @@ João Vitor Garcia Aguiar Mintz 10440421
 Giovanni Barreiro G. de Castro 10435745
 */
 
-// Link de referência para o semântico: https://www.geeksforgeeks.org/compiler-design/semantic-analysis-in-compiler-design/ 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -587,31 +585,24 @@ void comando_saida() {
     consome(FECHA_PAR);
 }
 
+// Semelhante ao do professor
 void comando_condicional() {
+    int L1 = rotulos();
+    int L2 = rotulos();
     consome(SE);
     expressao();
+    desvia("DSVF", L1);
+
     consome(ENTAO);
-
-    // Parte do MEPA:
-    int rotulo_senao = rotulos(); // Adiciona um rótulo para o ELSE para o DSVF (desvia se falso)
-    desvia("DSVF", rotulo_senao); // Chama a função de desvio (caso falso)
-
     comando();
-    if (lookahead.atomo == SENAO) {
-        // Parte do MEPA:
-        int rotulo_fim = rotulos(); // Adiciona um rótulo para o fim do ELSE para o DSVS (desvia sempre)
-        desvia("DSVS", rotulo_fim); // Chama a função de desvio
-        LN_NADA(rotulo_senao); // Chama a função de rótulo para o ELSE
-        
+    desvia("DSVS", L2);
+
+    LN_NADA(L1);
+    if (lookahead.atomo == SENAO) {   
         consome(SENAO); 
         comando();
-
-        LN_NADA(rotulo_fim); // Chama a função de rótulo para o FIM do ELSE
-    } else {
-        // Parte nova para o MEPA também:
-        LN_NADA(rotulo_senao); // Chama a função de rótulo para o ELSE
-        // Caso não tenha ELSE, ele apenas chama o rótulo do DSVF (desvia se falso)
     }
+    LN_NADA(L2);
 }
 
 void comando_repeticao() {
