@@ -254,7 +254,7 @@ int declaracao_variaveis() {
 }
 
 int lista_variaveis() {
-    int ordem_parametro = 0; // Apenas para, na hora de realizar o cálculo do endereço de parâmetro, ver a sequência de entrada
+    int ordem_parametro = 1; // Apenas para, na hora de realizar o cálculo do endereço de parâmetro, ver a sequência de entrada
     // Para realizar posteriormente a correção do tipo caso necessário
     int n = 1;
     TNo *inseridos[64]; // nós criados neste vetor, para acertar o tipo depois
@@ -284,6 +284,7 @@ int lista_variaveis() {
             // Parâmetro entra como escopo local mas não alteram o valor do endereço local
             if (categoria_atual == S_PARAMETRO) {
                 inserir_tabela(lookahead.atributo.id, endereco_local, categoria_atual, tipo_atual, escopo_atual, ordem_parametro);
+                ordem_parametro += 1;
             } else {
                 inserir_tabela(lookahead.atributo.id, endereco_local, categoria_atual, tipo_atual, escopo_atual, 0);
                 endereco_local += 1;
@@ -321,14 +322,13 @@ void declaracao_rotinas() {
 void declaracao_funcao() {
     total_parametros = 0; // Reseta para caso haja mais de uma função/procedimento
     consome(FUNCAO);
-    int rotulo_procedimento = rotulos();
+    int rotulo_funcao = rotulos();
 
-    LN_NADA(rotulo_procedimento);
+    LN_NADA(rotulo_funcao);
     mepa("ENPR");
 
     tipo(); // Tipo pois função retorna valores que devem ser analisados pelo semântico se o tipo bate com variável atribuída
     // Ideia é que para função, o endereço armazene o endereço do rótulo
-    int rotulo_funcao = rotulos();
     categoria_atual = S_FUNCAO;
     inserir_tabela(lookahead.atributo.id, rotulo_funcao, categoria_atual, tipo_atual, escopo_atual, 0); // 0 inicialmente, altera depois
 
@@ -441,7 +441,6 @@ void parametro_formal() {
     if (lookahead.atomo == VAR) {
         consome(VAR);
     }
-    categoria_atual = S_PARAMETRO;
     // Coleta o total de parâmetros
     total_parametros += lista_variaveis();
 }
@@ -701,9 +700,11 @@ void fator() {
             // Se for função, realiza o AMEM (procedimento não retorna valor) para retorno do valor
             if (simbolo->categoria == S_FUNCAO) {
                 mepa_n("AMEM", 1);
-            } else if (simbolo->categoria = S_PARAMETRO) { // Se for parâmetro, ele indica o endereço de retorno
-                simbolo->endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
-                mepa_nn("CRVL", 1, simbolo->endereco);
+            } else if (simbolo->categoria == S_PARAMETRO) { // Se for parâmetro, ele indica o endereço de retorno
+                int endereco = altera_endereco_parametro(total_parametros, simbolo->num_parametros);
+                mepa_nn("CRVL", 1, endereco);
+            } else {
+                mepa_nn("CRVL", simbolo->escopo, simbolo->endereco);
             }
             lista_expressao();
             consome(FECHA_PAR);
